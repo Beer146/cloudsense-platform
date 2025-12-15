@@ -6,15 +6,19 @@ import sys
 from pathlib import Path
 from datetime import datetime
 import yaml
+import time
 
 # Add scripts to Python path
 scripts_path = Path(__file__).parent.parent.parent / "scripts" / "zombie_hunter"
 sys.path.insert(0, str(scripts_path))
 
-# Now import from zombie_hunter
+# Import from zombie_hunter
 from scanners import EC2Scanner, EBSScanner, RDSScanner, ELBScanner
 from cost_calculator import CostCalculator
-from reporter import Reporter
+
+# Import database models
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from models import Scan, ZombieResource, get_db
 
 
 class ZombieHunterService:
@@ -71,8 +75,56 @@ class ZombieHunterService:
         
         return all_zombies
     
+    def _save_to_database(self, scan_regions, zombies, cost_summary, duration):
+        """Save scan results to database"""
+        from models.database import SessionLocal
+        db = SessionLocal()
+        
+        try:
+            # Create scan record
+            scan = Scan(
+                scan_type='zombie',
+                status='success',
+                regions=scan_regions,
+                total_resources=len(zombies),
+                total_cost=cost_summary.get('total_monthly_savings', 0),
+                total_savings=cost_summary.get('total_annual_savings', 0),
+                duration_seconds=duration
+            )
+            db.add(scan)
+            db.flush()  # Get scan ID
+            
+            # Create zombie resource records
+            for zombie in zombies:
+                zombie_record = ZombieResource(
+                    scan_id=scan.id,
+                    resource_type=zombie.get('resource_type', 'unknown'),
+                    resource_id=zombie.get('resource_id', 'unknown'),
+                    name=zombie.get('name', 'N/A'),
+                    region=zombie.get('region', 'unknown'),
+                    status=zombie.get('status', 'unknown'),
+                    reason=zombie.get('reason', ''),
+                    instance_type=zombie.get('instance_type'),
+                    monthly_cost=zombie.get('estimated_monthly_cost', zombie.get('monthly_cost', 0)),
+                    details=zombie  # Store full zombie data as JSON
+                )
+                db.add(zombie_record)
+            
+            db.commit()
+            print(f"✅ Saved scan results to database (Scan ID: {scan.id})")
+            return scan.id
+            
+        except Exception as e:
+            db.rollback()
+            print(f"❌ Error saving to database: {e}")
+            return None
+        finally:
+            db.close()
+    
     async def run_scan(self, regions: list = None):
         """Run zombie resource scan"""
+        start_time = time.time()
+        
         try:
             scan_regions = regions or self.config['aws']['regions']
             
@@ -88,6 +140,12 @@ class ZombieHunterService:
             calculator = CostCalculator()
             cost_summary = calculator.calculate_total_savings(zombies)
             
+            # Calculate duration
+            duration = time.time() - start_time
+            
+            # Save to database
+            scan_id = self._save_to_database(scan_regions, zombies, cost_summary, duration)
+            
             # Count by type and calculate costs
             ec2_zombies = [z for z in zombies if z.get('resource_type') == 'EC2']
             ebs_zombies = [z for z in zombies if z.get('resource_type') == 'EBS']
@@ -100,6 +158,7 @@ class ZombieHunterService:
             # Format response
             results = {
                 "status": "success",
+                "scan_id": scan_id,
                 "regions_scanned": scan_regions,
                 "zombies_found": {
                     "ec2": {
@@ -130,7 +189,8 @@ class ZombieHunterService:
                 "total_zombies": len(zombies),
                 "total_monthly_cost": cost_summary.get('total_monthly_savings', 0),
                 "total_annual_cost": cost_summary.get('total_annual_savings', 0),
-                "scan_timestamp": datetime.utcnow().isoformat() + "Z"
+                "scan_timestamp": datetime.utcnow().isoformat() + "Z",
+                "duration_seconds": duration
             }
             
             return results

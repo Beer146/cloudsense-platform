@@ -1,0 +1,71 @@
+"""
+Database models for scans and resources
+"""
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from .database import Base
+
+
+class Scan(Base):
+    """Represents a scan operation"""
+    __tablename__ = "scans"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scan_type = Column(String)  # 'zombie' or 'rightsizing'
+    status = Column(String)  # 'success' or 'error'
+    regions = Column(JSON)  # List of regions scanned
+    total_resources = Column(Integer)
+    total_cost = Column(Float)
+    total_savings = Column(Float)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    duration_seconds = Column(Float, nullable=True)
+    
+    # Relationships
+    zombies = relationship("ZombieResource", back_populates="scan", cascade="all, delete-orphan")
+    recommendations = relationship("RightSizingRecommendation", back_populates="scan", cascade="all, delete-orphan")
+
+
+class ZombieResource(Base):
+    """Represents a zombie resource found in a scan"""
+    __tablename__ = "zombie_resources"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(Integer, ForeignKey("scans.id"))
+    
+    resource_type = Column(String)  # EC2, EBS, RDS, ELB
+    resource_id = Column(String, index=True)
+    name = Column(String)
+    region = Column(String)
+    status = Column(String)  # stopped, unattached, idle, etc.
+    reason = Column(String)
+    instance_type = Column(String, nullable=True)
+    monthly_cost = Column(Float)
+    details = Column(JSON)  # Additional metadata
+    
+    # Relationship
+    scan = relationship("Scan", back_populates="zombies")
+
+
+class RightSizingRecommendation(Base):
+    """Represents a right-sizing recommendation"""
+    __tablename__ = "rightsizing_recommendations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(Integer, ForeignKey("scans.id"))
+    
+    instance_id = Column(String, index=True)
+    name = Column(String)
+    region = Column(String)
+    current_type = Column(String)
+    recommended_type = Column(String)
+    strategy = Column(String)  # downsize, family_switch, etc.
+    reason = Column(String)
+    current_monthly_cost = Column(Float)
+    recommended_monthly_cost = Column(Float)
+    monthly_savings = Column(Float)
+    annual_savings = Column(Float)
+    cpu_metrics = Column(JSON)  # CPU utilization data
+    
+    # Relationship
+    scan = relationship("Scan", back_populates="recommendations")

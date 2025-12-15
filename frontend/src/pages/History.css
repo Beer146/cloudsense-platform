@@ -1,0 +1,177 @@
+.history-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.history-header h1 {
+  font-size: 2.5rem;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-buttons button {
+  padding: 0.5rem 1rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #888;
+  width: auto;
+  margin: 0;
+}
+
+.filter-buttons button.active {
+  background: #646cff;
+  color: white;
+  border-color: #646cff;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  text-align: center;
+}
+
+.stat-card h3 {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+  font-weight: normal;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  background: linear-gradient(120deg, #646cff, #42d392);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  background: #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.chart-card h3 {
+  margin-top: 0;
+  color: #ddd;
+}
+
+.scans-list h2 {
+  margin-bottom: 1rem;
+}
+
+.scan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.scan-card {
+  background: #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  transition: all 0.3s ease;
+}
+
+.scan-card:hover {
+  transform: translateY(-3px);
+  border-color: #646cff;
+}
+
+.scan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.scan-type {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.scan-type.zombie {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.scan-type.rightsizing {
+  background: rgba(66, 211, 146, 0.2);
+  color: #42d392;
+}
+
+.scan-date {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.scan-details p {
+  margin: 0.5rem 0;
+  color: #ddd;
+  text-align: left;
+}
+
+.scan-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.delete-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  width: 100%;
+  margin: 0;
+}
+
+.delete-btn:hover {
+  background: #ff5252;
+}
+
+.empty-state {
+  text-align: center;
+  color: #888;
+  padding: 2rem;
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
