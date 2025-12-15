@@ -1,0 +1,120 @@
+.App {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(120deg, #646cff, #42d392);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.service-card {
+  background: #1a1a1a;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #333;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  border-color: #646cff;
+  box-shadow: 0 10px 30px rgba(100, 108, 255, 0.2);
+}
+
+.service-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.service-card p {
+  color: #888;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.results {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #0a0a0a;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.results h3 {
+  color: #42d392;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.results p {
+  margin: 0.5rem 0;
+  text-align: left;
+  color: #ddd;
+}
+
+.breakdown {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.breakdown p {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.success-message {
+  color: #42d392 !important;
+  font-weight: bold;
+  padding: 0.5rem;
+  background: rgba(66, 211, 146, 0.1);
+  border-radius: 4px;
+  margin-top: 1rem !important;
+}
+
+.info-message {
+  color: #646cff !important;
+  font-weight: bold;
+  padding: 0.5rem;
+  background: rgba(100, 108, 255, 0.1);
+  border-radius: 4px;
+  margin-top: 1rem !important;
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  transition: background 0.3s ease;
+  width: 100%;
+}
+
+button:hover:not(:disabled) {
+  background: #535bf2;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}

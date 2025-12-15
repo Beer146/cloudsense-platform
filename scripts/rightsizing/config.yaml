@@ -1,0 +1,71 @@
+# AWS Configuration
+aws:
+  regions:
+    - us-east-1
+    - us-west-2
+  # Optional: specify profile name
+  # profile: default
+
+# Analysis settings
+analysis:
+  # Number of days to analyze
+  lookback_days: 30
+  
+  # Minimum data points required for recommendation
+  min_datapoints: 20
+  
+  # Percentile to use for sizing (95th = handle peaks, 50th = average)
+  cpu_percentile: 95
+  memory_percentile: 95
+
+# EC2 Recommendations
+ec2:
+  # CPU utilization threshold for downsizing (%)
+  cpu_underutilized_threshold: 20
+  
+  # Memory utilization threshold (%)
+  memory_underutilized_threshold: 30
+  
+  # Minimum savings to recommend a change ($)
+  min_savings_threshold: 10
+  
+  # Instance families to consider for recommendations
+  allowed_families:
+    - t3
+    - t3a
+    - m5
+    - m5a
+    - c5
+    - c5a
+    - r5
+    - r5a
+
+# RDS Recommendations
+rds:
+  cpu_threshold: 20
+  connection_threshold: 10
+  min_savings_threshold: 20
+  
+  # Consider read replicas for high-read workloads
+  recommend_read_replicas: true
+
+# Reserved Instance Recommendations
+reserved_instances:
+  # Minimum utilization to recommend RI (%)
+  min_utilization: 80
+  
+  # RI term to recommend (1 or 3 years)
+  term_years: 1
+  
+  # Payment option: all_upfront, partial_upfront, no_upfront
+  payment_option: partial_upfront
+
+# Reporting
+reporting:
+  format: console  # console, json, csv, html
+  save_to_file: true
+  output_dir: ./reports
+  
+  # Generate visualizations
+  generate_charts: true
+  chart_dir: ./reports/charts

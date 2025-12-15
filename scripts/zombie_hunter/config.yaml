@@ -1,0 +1,48 @@
+# AWS Configuration
+aws:
+  regions:
+    - us-east-1
+    - us-west-2
+  # Optional: specify profile name from ~/.aws/credentials
+  # profile: default
+
+# Scanning thresholds
+thresholds:
+  ec2:
+    # Days an instance has been stopped to be considered zombie
+    stopped_days: 7
+    # CPU utilization percentage threshold (below this = underutilized)
+    cpu_threshold: 5
+  
+  rds:
+    # Days with no connections to be considered idle
+    idle_days: 7
+    # Connection count threshold
+    connection_threshold: 1
+  
+  elb:
+    # Days with no traffic to be considered unused
+    no_traffic_days: 7
+    # Request count threshold
+    request_threshold: 10
+  
+  ebs:
+    # Volumes unattached for this many days
+    unattached_days: 7
+
+# Cleanup settings
+cleanup:
+  # Set to true to actually delete resources (BE CAREFUL!)
+  enabled: false
+  # Require manual approval before deletion
+  require_approval: true
+  # Dry run mode - just report what would be deleted
+  dry_run: true
+
+# Reporting
+reporting:
+  # Output format: console, json, csv, html
+  format: console
+  # Save report to file
+  save_to_file: true
+  output_dir: ./reports
