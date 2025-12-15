@@ -3,6 +3,7 @@ Scan History API Endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 import sys
 from pathlib import Path
@@ -139,16 +140,19 @@ async def get_stats(db: Session = Depends(get_db)):
         total_zombies_found = db.query(ZombieResource).count()
         total_recommendations = db.query(RightSizingRecommendation).count()
         
-        # Calculate total potential savings
-        zombie_savings = db.query(Scan).filter(
+        # Get LATEST zombie scan cost (not sum of all)
+        latest_zombie_scan = db.query(Scan).filter(
             Scan.scan_type == 'zombie'
-        ).all()
-        total_zombie_cost = sum([s.total_cost or 0 for s in zombie_savings])
+        ).order_by(Scan.timestamp.desc()).first()
         
-        rightsizing_savings = db.query(Scan).filter(
+        current_monthly_waste = latest_zombie_scan.total_cost if latest_zombie_scan else 0
+        
+        # Get LATEST rightsizing savings (not sum of all)
+        latest_rightsizing_scan = db.query(Scan).filter(
             Scan.scan_type == 'rightsizing'
-        ).all()
-        total_rightsizing_savings = sum([s.total_savings or 0 for s in rightsizing_savings])
+        ).order_by(Scan.timestamp.desc()).first()
+        
+        current_annual_savings_potential = latest_rightsizing_scan.total_savings if latest_rightsizing_scan else 0
         
         return {
             "status": "success",
@@ -158,8 +162,8 @@ async def get_stats(db: Session = Depends(get_db)):
                 "rightsizing_scans": rightsizing_scans,
                 "total_zombies_found": total_zombies_found,
                 "total_recommendations": total_recommendations,
-                "total_monthly_waste": total_zombie_cost,
-                "total_annual_savings_potential": total_rightsizing_savings
+                "current_monthly_waste": current_monthly_waste,  # Changed from total_monthly_waste
+                "current_annual_savings_potential": current_annual_savings_potential  # Changed from total_annual_savings_potential
             }
         }
     except Exception as e:

@@ -12,7 +12,7 @@ class Scan(Base):
     __tablename__ = "scans"
     
     id = Column(Integer, primary_key=True, index=True)
-    scan_type = Column(String)  # 'zombie' or 'rightsizing'
+    scan_type = Column(String)  # 'zombie', 'rightsizing', or 'compliance'
     status = Column(String)  # 'success' or 'error'
     regions = Column(JSON)  # List of regions scanned
     total_resources = Column(Integer)
@@ -24,6 +24,7 @@ class Scan(Base):
     # Relationships
     zombies = relationship("ZombieResource", back_populates="scan", cascade="all, delete-orphan")
     recommendations = relationship("RightSizingRecommendation", back_populates="scan", cascade="all, delete-orphan")
+    violations = relationship("ComplianceViolation", back_populates="scan", cascade="all, delete-orphan")
 
 
 class ZombieResource(Base):
@@ -69,3 +70,22 @@ class RightSizingRecommendation(Base):
     
     # Relationship
     scan = relationship("Scan", back_populates="recommendations")
+
+
+class ComplianceViolation(Base):
+    """Represents a compliance violation found in a scan"""
+    __tablename__ = "compliance_violations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    scan_id = Column(Integer, ForeignKey("scans.id"))
+    
+    resource_type = Column(String)  # S3, RDS, SecurityGroup, EC2
+    resource_id = Column(String, index=True)
+    resource_name = Column(String, nullable=True)
+    violation = Column(String)  # Type of violation
+    severity = Column(String)  # critical, high, medium, low
+    description = Column(String)
+    remediation = Column(String)
+    
+    # Relationship
+    scan = relationship("Scan", back_populates="violations")

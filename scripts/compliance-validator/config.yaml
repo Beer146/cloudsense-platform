@@ -1,0 +1,45 @@
+# AWS Configuration
+aws:
+  regions:
+    - us-east-1
+    - us-west-2
+
+# Compliance Rules
+rules:
+  s3:
+    require_encryption: true
+    block_public_access: true
+    require_versioning: false  # Optional
+    require_logging: false     # Optional
+  
+  rds:
+    require_encryption: true
+    block_public_access: true
+    require_backup: true
+    backup_retention_days: 7
+  
+  security_groups:
+    block_all_traffic: false  # Block 0.0.0.0/0
+    sensitive_ports: [22, 3389, 3306, 5432, 1433, 27017]  # SSH, RDP, MySQL, Postgres, MSSQL, MongoDB
+  
+  ec2:
+    required_tags: ["Environment", "Owner", "Project"]
+    require_encryption: true
+  
+  iam:
+    require_mfa: true
+    max_password_age: 90
+    require_password_rotation: true
+
+# Severity levels
+severity:
+  critical: ["s3_public", "rds_public", "sg_sensitive_open"]
+  high: ["s3_unencrypted", "rds_unencrypted", "iam_no_mfa"]
+  medium: ["ec2_missing_tags", "rds_no_backup"]
+  low: ["s3_no_versioning", "s3_no_logging"]
+
+# Reporting
+reporting:
+  format: console
+  save_to_file: true
+  output_dir: ./reports

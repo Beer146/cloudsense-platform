@@ -20,11 +20,27 @@ interface RightSizingResults {
   message?: string
 }
 
+interface ComplianceResults {
+  status: string
+  scan_id?: number
+  regions_scanned?: string[]
+  total_violations?: number
+  by_severity?: {
+    critical: number
+    high: number
+    medium: number
+    low: number
+  }
+  by_type?: any
+  violations?: any[]
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'history'>('dashboard')
   const [apiStatus, setApiStatus] = useState<string>('Checking...')
   const [zombieResults, setZombieResults] = useState<ZombieResults | null>(null)
   const [rightSizingResults, setRightSizingResults] = useState<RightSizingResults | null>(null)
+  const [complianceResults, setComplianceResults] = useState<ComplianceResults | null>(null)
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({})
 
   const checkAPI = async () => {
@@ -73,6 +89,24 @@ function App() {
     }
   }
 
+  const runComplianceScan = async () => {
+    setLoading({ ...loading, compliance: true })
+    try {
+      const response = await fetch('http://localhost:8000/api/compliance/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const data = await response.json()
+      setComplianceResults(data)
+    } catch (error) {
+      console.error('Compliance scan failed:', error)
+      setComplianceResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, compliance: false })
+    }
+  }
+
   if (currentPage === 'history') {
     return (
       <div className="App">
@@ -99,12 +133,13 @@ function App() {
       </nav>
 
       <div className="dashboard-content">
-        <p className="subtitle">Unified AWS Cost Optimization Suite</p>
+        <p className="subtitle">Unified AWS Cost Optimization & Security Suite</p>
         
         <button onClick={checkAPI} className="test-btn">Test API Connection</button>
         <p className="api-status">{apiStatus}</p>
 
         <div className="service-grid">
+          {/* Zombie Resource Hunter */}
           <div className="service-card">
             <h2>💀 Zombie Resource Hunter</h2>
             <p>Find and eliminate unused AWS resources</p>
@@ -127,16 +162,17 @@ function App() {
                 </div>
 
                 {zombieResults.total_zombies === 0 && (
-                  <p className="success-message">🎉 No zombie resources found - your AWS is clean!</p>
+                  <p className="success-message">🎉 No zombie resources found!</p>
                 )}
                 
                 {zombieResults.scan_id && (
-                  <p className="info-message">✅ Scan saved to history (ID: {zombieResults.scan_id})</p>
+                  <p className="info-message">✅ Saved to history (ID: {zombieResults.scan_id})</p>
                 )}
               </div>
             )}
           </div>
 
+          {/* Right-Sizing Engine */}
           <div className="service-card">
             <h2>📏 Right-Sizing Engine</h2>
             <p>Optimize instance types based on usage</p>
@@ -152,27 +188,66 @@ function App() {
                   <p className="info-message">ℹ️ {rightSizingResults.message}</p>
                 )}
                 
-                <p><strong>EC2 Analyzed:</strong> {rightSizingResults.recommendations?.ec2?.total_analyzed || 0} instances</p>
+                <p><strong>EC2 Analyzed:</strong> {rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
                 <p><strong>Potential Savings:</strong> ${rightSizingResults.total_monthly_savings?.toFixed(2)}/month</p>
                 <p><strong>Regions:</strong> {rightSizingResults.regions_analyzed?.join(', ')}</p>
                 
                 <div className="breakdown">
-                  <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0} opportunities</p>
-                  <p>Family Switch: {rightSizingResults.recommendations?.ec2?.family_switches || 0} opportunities</p>
+                  <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0}</p>
+                  <p>Family Switch: {rightSizingResults.recommendations?.ec2?.family_switches || 0}</p>
                 </div>
 
                 {(rightSizingResults.total_monthly_savings || 0) === 0 && 
                  (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
-                  <p className="info-message">💡 No running instances found. Right-sizing only analyzes running resources.</p>
+                  <p className="info-message">💡 No running instances found.</p>
                 )}
 
                 {(rightSizingResults.total_monthly_savings || 0) === 0 && 
                  (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
-                  <p className="success-message">🎉 Your instances are already well-optimized!</p>
+                  <p className="success-message">🎉 Already optimized!</p>
                 )}
                 
                 {rightSizingResults.scan_id && (
-                  <p className="info-message">✅ Analysis saved to history (ID: {rightSizingResults.scan_id})</p>
+                  <p className="info-message">✅ Saved to history (ID: {rightSizingResults.scan_id})</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Compliance Validator */}
+          <div className="service-card">
+            <h2>🔒 Compliance Validator</h2>
+            <p>Check AWS resources for security violations</p>
+            <button onClick={runComplianceScan} disabled={loading.compliance}>
+              {loading.compliance ? 'Scanning...' : 'Run Compliance Scan'}
+            </button>
+
+            {complianceResults && complianceResults.status === 'success' && (
+              <div className="results">
+                <h3>Results:</h3>
+                <p><strong>Total Violations:</strong> {complianceResults.total_violations}</p>
+                <p><strong>Regions:</strong> {complianceResults.regions_scanned?.join(', ')}</p>
+                
+                <div className="breakdown">
+                  <p className="critical">🚨 Critical: {complianceResults.by_severity?.critical || 0}</p>
+                  <p className="high">⚠️ High: {complianceResults.by_severity?.high || 0}</p>
+                  <p className="medium">⚡ Medium: {complianceResults.by_severity?.medium || 0}</p>
+                  <p className="low">ℹ️ Low: {complianceResults.by_severity?.low || 0}</p>
+                </div>
+
+                <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
+                  <p>S3: {complianceResults.by_type?.s3 || 0}</p>
+                  <p>RDS: {complianceResults.by_type?.rds || 0}</p>
+                  <p>Security Groups: {complianceResults.by_type?.security_group || 0}</p>
+                  <p>EC2: {complianceResults.by_type?.ec2 || 0}</p>
+                </div>
+
+                {complianceResults.total_violations === 0 && (
+                  <p className="success-message">🎉 Fully compliant!</p>
+                )}
+                
+                {complianceResults.scan_id && (
+                  <p className="info-message">✅ Saved to history (ID: {complianceResults.scan_id})</p>
                 )}
               </div>
             )}

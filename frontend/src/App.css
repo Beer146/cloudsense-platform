@@ -167,3 +167,22 @@ button:disabled {
   background: #555;
   cursor: not-allowed;
 }
+
+.breakdown .critical {
+  color: #ff6b6b !important;
+  font-weight: bold;
+}
+
+.breakdown .high {
+  color: #ffa500 !important;
+  font-weight: bold;
+}
+
+.breakdown .medium {
+  color: #ffd93d !important;
+  font-weight: bold;
+}
+
+.breakdown .low {
+  color: #646cff !important;
+}

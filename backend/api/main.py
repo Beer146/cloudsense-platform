@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from zombie import router as zombie_router
 from rightsizing import router as rightsizing_router
+from compliance import router as compliance_router
 from history import router as history_router
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_middleware(
 # Include routers
 app.include_router(zombie_router)
 app.include_router(rightsizing_router)
+app.include_router(compliance_router)
 app.include_router(history_router)
 
 @app.get("/")
@@ -30,7 +32,8 @@ async def root():
         "message": "Welcome to CloudSense API",
         "services": [
             "Zombie Resource Hunter",
-            "Right-Sizing Recommendation Engine"
+            "Right-Sizing Recommendation Engine",
+            "Compliance-as-Code Validator"
         ]
     }
 

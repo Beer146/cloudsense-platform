@@ -20,8 +20,8 @@ interface Stats {
   rightsizing_scans: number
   total_zombies_found: number
   total_recommendations: number
-  total_monthly_waste: number
-  total_annual_savings_potential: number
+  current_monthly_waste: number
+  current_annual_savings_potential: number
 }
 
 const COLORS = ['#646cff', '#42d392', '#ff6b6b', '#ffd93d']
@@ -125,12 +125,14 @@ function History() {
             <p className="stat-value">{stats.total_zombies_found}</p>
           </div>
           <div className="stat-card">
-            <h3>Monthly Waste</h3>
-            <p className="stat-value">${stats.total_monthly_waste.toFixed(2)}</p>
+            <h3>Current Monthly Waste</h3>
+            <p className="stat-value">${stats.current_monthly_waste.toFixed(2)}</p>
+            <p className="stat-subtitle">from latest scan</p>
           </div>
           <div className="stat-card">
             <h3>Annual Savings Potential</h3>
-            <p className="stat-value">${stats.total_annual_savings_potential.toFixed(2)}</p>
+            <p className="stat-value">${stats.current_annual_savings_potential.toFixed(2)}</p>
+            <p className="stat-subtitle">from latest analysis</p>
           </div>
         </div>
       )}
