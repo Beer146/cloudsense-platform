@@ -113,9 +113,6 @@ thresholds:
 - [ ] Authentication & multi-tenancy
 - [ ] Deployment automation
 
-## 🤝 Contributing
-
-This is a personal portfolio project. Feedback and suggestions are welcome!
 
 ## 📝 License
 
@@ -126,8 +123,8 @@ MIT License - feel free to use for learning purposes
 **Abhir Naik**
 - Portfolio: [abhirnaik.me](https://abhirnaik.me)
 - LinkedIn: [linkedin.com/in/abhirnaik](https://linkedin.com/in/abhirnaik)
-- GitHub: [@abhirnaik](https://github.com/abhirnaik)
+- GitHub: [@Beer146](https://github.com/Beer146)
 
 ---
 
-*Built with ☕ and late-night coding sessions*
+
