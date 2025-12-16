@@ -181,3 +181,12 @@
   color: #666;
   margin-top: 0.25rem;
 }
+
+.scan-type.compliance {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+}
+
+.chart-card.full-width {
+  grid-column: 1 / -1;
+}

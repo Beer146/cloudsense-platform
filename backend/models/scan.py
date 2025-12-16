@@ -44,6 +44,11 @@ class ZombieResource(Base):
     monthly_cost = Column(Float)
     details = Column(JSON)  # Additional metadata
     
+    # Resolution tracking
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_note = Column(String, nullable=True)
+    
     # Relationship
     scan = relationship("Scan", back_populates="zombies")
 
@@ -68,6 +73,11 @@ class RightSizingRecommendation(Base):
     annual_savings = Column(Float)
     cpu_metrics = Column(JSON)  # CPU utilization data
     
+    # Resolution tracking
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_note = Column(String, nullable=True)
+    
     # Relationship
     scan = relationship("Scan", back_populates="recommendations")
 
@@ -86,6 +96,11 @@ class ComplianceViolation(Base):
     severity = Column(String)  # critical, high, medium, low
     description = Column(String)
     remediation = Column(String)
+    
+    # Resolution tracking
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_note = Column(String, nullable=True)
     
     # Relationship
     scan = relationship("Scan", back_populates="violations")

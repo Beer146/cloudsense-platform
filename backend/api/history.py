@@ -3,14 +3,14 @@ Scan History API Endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc, distinct
 from typing import List
 import sys
 from pathlib import Path
 
 # Add models to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import Scan, ZombieResource, RightSizingRecommendation, get_db
+from models import Scan, ZombieResource, RightSizingRecommendation, ComplianceViolation, get_db
 
 router = APIRouter(prefix="/api/history", tags=["History"])
 
@@ -25,7 +25,7 @@ async def get_all_scans(
     Get scan history
     
     Args:
-        scan_type: Filter by 'zombie' or 'rightsizing' (optional)
+        scan_type: Filter by 'zombie', 'rightsizing', or 'compliance' (optional)
         limit: Number of scans to return (default: 10)
     """
     try:
@@ -121,6 +121,24 @@ async def get_scan_details(scan_id: int, db: Session = Depends(get_db)):
                 for r in recommendations
             ]
         
+        elif scan.scan_type == 'compliance':
+            violations = db.query(ComplianceViolation).filter(
+                ComplianceViolation.scan_id == scan_id
+            ).all()
+            
+            result["violations"] = [
+                {
+                    "resource_type": v.resource_type,
+                    "resource_id": v.resource_id,
+                    "resource_name": v.resource_name,
+                    "violation": v.violation,
+                    "severity": v.severity,
+                    "description": v.description,
+                    "remediation": v.remediation
+                }
+                for v in violations
+            ]
+        
         return result
         
     except HTTPException:
@@ -136,9 +154,16 @@ async def get_stats(db: Session = Depends(get_db)):
         total_scans = db.query(Scan).count()
         zombie_scans = db.query(Scan).filter(Scan.scan_type == 'zombie').count()
         rightsizing_scans = db.query(Scan).filter(Scan.scan_type == 'rightsizing').count()
+        compliance_scans = db.query(Scan).filter(Scan.scan_type == 'compliance').count()
         
-        total_zombies_found = db.query(ZombieResource).count()
-        total_recommendations = db.query(RightSizingRecommendation).count()
+        # Count unique zombies by resource_id (not total across all scans)
+        total_zombies_found = db.query(func.count(distinct(ZombieResource.resource_id))).scalar() or 0
+        
+        # Count unique recommendations by instance_id (not total across all scans)
+        total_recommendations = db.query(func.count(distinct(RightSizingRecommendation.instance_id))).scalar() or 0
+        
+        # Count unique violations by resource_id (not total across all scans)
+        total_violations_found = db.query(func.count(distinct(ComplianceViolation.resource_id))).scalar() or 0
         
         # Get LATEST zombie scan cost (not sum of all)
         latest_zombie_scan = db.query(Scan).filter(
@@ -154,16 +179,26 @@ async def get_stats(db: Session = Depends(get_db)):
         
         current_annual_savings_potential = latest_rightsizing_scan.total_savings if latest_rightsizing_scan else 0
         
+        # Get LATEST compliance scan
+        latest_compliance_scan = db.query(Scan).filter(
+            Scan.scan_type == 'compliance'
+        ).order_by(Scan.timestamp.desc()).first()
+        
+        current_violations = latest_compliance_scan.total_resources if latest_compliance_scan else 0
+        
         return {
             "status": "success",
             "stats": {
                 "total_scans": total_scans,
                 "zombie_scans": zombie_scans,
                 "rightsizing_scans": rightsizing_scans,
+                "compliance_scans": compliance_scans,
                 "total_zombies_found": total_zombies_found,
                 "total_recommendations": total_recommendations,
-                "current_monthly_waste": current_monthly_waste,  # Changed from total_monthly_waste
-                "current_annual_savings_potential": current_annual_savings_potential  # Changed from total_annual_savings_potential
+                "total_violations_found": total_violations_found,  # Now shows unique violations
+                "current_monthly_waste": current_monthly_waste,
+                "current_annual_savings_potential": current_annual_savings_potential,
+                "current_violations": current_violations
             }
         }
     except Exception as e:

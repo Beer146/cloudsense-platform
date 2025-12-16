@@ -126,7 +126,8 @@ class ComplianceService:
             db.add(scan)
             db.flush()
             
-            # Create violation records
+            # Create violation records and collect their IDs
+            violation_records = []
             for violation in violations:
                 violation_record = ComplianceViolation(
                     scan_id=scan.id,
@@ -139,15 +140,21 @@ class ComplianceService:
                     remediation=violation.get('remediation', '')
                 )
                 db.add(violation_record)
+                violation_records.append(violation_record)
             
             db.commit()
+            
+            # Refresh to get IDs
+            for record in violation_records:
+                db.refresh(record)
+            
             print(f"✅ Saved compliance scan to database (Scan ID: {scan.id})")
-            return scan.id
+            return scan.id, violation_records
             
         except Exception as e:
             db.rollback()
             print(f"❌ Error saving to database: {e}")
-            return None
+            return None, []
         finally:
             db.close()
     
@@ -172,8 +179,19 @@ class ComplianceService:
             # Calculate duration
             duration = time.time() - start_time
             
-            # Save to database
-            scan_id = self._save_to_database(scan_regions, violations, duration)
+            # Save to database and get violation records with IDs
+            scan_id, violation_records = self._save_to_database(scan_regions, violations, duration)
+            
+            # Add database IDs to violations for response
+            violations_with_ids = []
+            for i, violation in enumerate(violations):
+                violation_with_id = violation.copy()
+                if i < len(violation_records):
+                    violation_with_id['id'] = violation_records[i].id
+                    violation_with_id['resolved'] = violation_records[i].resolved
+                    violation_with_id['resolved_at'] = violation_records[i].resolved_at.isoformat() if violation_records[i].resolved_at else None
+                    violation_with_id['resolved_note'] = violation_records[i].resolved_note
+                violations_with_ids.append(violation_with_id)
             
             # Format response
             results = {
@@ -193,7 +211,7 @@ class ComplianceService:
                     "security_group": len([v for v in violations if v.get('resource_type') == 'SecurityGroup']),
                     "ec2": len([v for v in violations if v.get('resource_type') == 'EC2'])
                 },
-                "violations": violations[:10],  # Top 10 for response
+                "violations": violations_with_ids,  # Now includes database IDs!
                 "scan_timestamp": datetime.utcnow().isoformat() + "Z",
                 "duration_seconds": duration
             }

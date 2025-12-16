@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import History from './pages/History'
+import Insights from './pages/Insights'
 import './App.css'
 
 interface ZombieResults {
@@ -20,6 +21,20 @@ interface RightSizingResults {
   message?: string
 }
 
+interface Violation {
+  id?: number
+  resource_type: string
+  resource_id: string
+  resource_name?: string
+  violation: string
+  severity: string
+  description: string
+  remediation: string
+  resolved?: boolean
+  resolved_at?: string
+  resolved_note?: string
+}
+
 interface ComplianceResults {
   status: string
   scan_id?: number
@@ -32,26 +47,17 @@ interface ComplianceResults {
     low: number
   }
   by_type?: any
-  violations?: any[]
+  violations?: Violation[]
 }
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'history'>('dashboard')
-  const [apiStatus, setApiStatus] = useState<string>('Checking...')
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'history' | 'insights'>('dashboard')
   const [zombieResults, setZombieResults] = useState<ZombieResults | null>(null)
   const [rightSizingResults, setRightSizingResults] = useState<RightSizingResults | null>(null)
   const [complianceResults, setComplianceResults] = useState<ComplianceResults | null>(null)
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({})
-
-  const checkAPI = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/')
-      const data = await response.json()
-      setApiStatus(`✅ Connected: ${data.message}`)
-    } catch (error) {
-      setApiStatus('❌ API not reachable')
-    }
-  }
+  const [showViolations, setShowViolations] = useState(false)
+  const [resolvingViolation, setResolvingViolation] = useState<number | null>(null)
 
   const runZombieScan = async () => {
     setLoading({ ...loading, zombie: true })
@@ -91,6 +97,7 @@ function App() {
 
   const runComplianceScan = async () => {
     setLoading({ ...loading, compliance: true })
+    setShowViolations(false)
     try {
       const response = await fetch('http://localhost:8000/api/compliance/scan', {
         method: 'POST',
@@ -107,6 +114,65 @@ function App() {
     }
   }
 
+  const markViolationResolved = async (violationId: number, index: number) => {
+    if (!complianceResults || !complianceResults.violations) return
+    
+    const note = prompt('Add a note about how you fixed this (optional):')
+    
+    setResolvingViolation(violationId)
+    try {
+      const response = await fetch(`http://localhost:8000/api/resolutions/compliance/${violationId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: note || undefined })
+      })
+      
+      if (response.ok) {
+        const updatedViolations = [...complianceResults.violations]
+        updatedViolations[index] = {
+          ...updatedViolations[index],
+          resolved: true,
+          resolved_at: new Date().toISOString(),
+          resolved_note: note || undefined
+        }
+        
+        setComplianceResults({
+          ...complianceResults,
+          violations: updatedViolations
+        })
+        
+        alert('✅ Violation marked as resolved!')
+      } else {
+        alert('Failed to mark violation as resolved')
+      }
+    } catch (error) {
+      console.error('Failed to resolve violation:', error)
+      alert('Error marking violation as resolved')
+    } finally {
+      setResolvingViolation(null)
+    }
+  }
+
+  const getSeverityColor = (severity: string) => {
+    switch(severity) {
+      case 'critical': return '#D13212'
+      case 'high': return '#FF9900'
+      case 'medium': return '#FFD700'
+      case 'low': return '#146EB4'
+      default: return '#888'
+    }
+  }
+
+  const getSeverityIcon = (severity: string) => {
+    switch(severity) {
+      case 'critical': return '🚨'
+      case 'high': return '⚠️'
+      case 'medium': return '⚡'
+      case 'low': return 'ℹ️'
+      default: return '•'
+    }
+  }
+
   if (currentPage === 'history') {
     return (
       <div className="App">
@@ -115,9 +181,26 @@ function App() {
           <div className="nav-buttons">
             <button onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
             <button className="active" onClick={() => setCurrentPage('history')}>History</button>
+            <button onClick={() => setCurrentPage('insights')}>Insights</button>
           </div>
         </nav>
         <History />
+      </div>
+    )
+  }
+
+  if (currentPage === 'insights') {
+    return (
+      <div className="App">
+        <nav className="main-nav">
+          <h1>CloudSense Platform</h1>
+          <div className="nav-buttons">
+            <button onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
+            <button onClick={() => setCurrentPage('history')}>History</button>
+            <button className="active" onClick={() => setCurrentPage('insights')}>Insights</button>
+          </div>
+        </nav>
+        <Insights />
       </div>
     )
   }
@@ -129,14 +212,15 @@ function App() {
         <div className="nav-buttons">
           <button className="active" onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
           <button onClick={() => setCurrentPage('history')}>History</button>
+          <button onClick={() => setCurrentPage('insights')}>Insights</button>
         </div>
       </nav>
 
       <div className="dashboard-content">
-        <p className="subtitle">Unified AWS Cost Optimization & Security Suite</p>
-        
-        <button onClick={checkAPI} className="test-btn">Test API Connection</button>
-        <p className="api-status">{apiStatus}</p>
+        <div className="dashboard-header">
+          <h1>AWS Cost Optimization Dashboard</h1>
+          <p className="subtitle">Unified AWS Cost Optimization & Security Suite</p>
+        </div>
 
         <div className="service-grid">
           {/* Zombie Resource Hunter */}
@@ -245,6 +329,15 @@ function App() {
                 {complianceResults.total_violations === 0 && (
                   <p className="success-message">🎉 Fully compliant!</p>
                 )}
+
+                {(complianceResults.total_violations ?? 0) > 0 && complianceResults.violations && (
+                  <button 
+                    onClick={() => setShowViolations(!showViolations)}
+                    style={{ marginTop: '1rem', background: '#D13212' }}
+                  >
+                    {showViolations ? 'Hide Details' : 'Show Violation Details'}
+                  </button>
+                )}
                 
                 {complianceResults.scan_id && (
                   <p className="info-message">✅ Saved to history (ID: {complianceResults.scan_id})</p>
@@ -253,6 +346,69 @@ function App() {
             )}
           </div>
         </div>
+
+        {/* Violation Details Modal */}
+        {showViolations && complianceResults && complianceResults.violations && (
+          <div className="violations-modal">
+            <div className="violations-content">
+              <div className="violations-header">
+                <h2>🔒 Compliance Violations</h2>
+                <button className="close-btn" onClick={() => setShowViolations(false)}>✕</button>
+              </div>
+              
+              <div className="violations-list">
+                {complianceResults.violations.map((violation, index) => (
+                  <div 
+                    key={index} 
+                    className={`violation-card ${violation.resolved ? 'resolved' : ''}`}
+                    style={{ borderLeft: `4px solid ${violation.resolved ? '#1D8102' : getSeverityColor(violation.severity)}` }}
+                  >
+                    <div className="violation-header">
+                      <span className="severity-badge" style={{ background: violation.resolved ? '#1D8102' : getSeverityColor(violation.severity) }}>
+                        {violation.resolved ? '✅ RESOLVED' : `${getSeverityIcon(violation.severity)} ${violation.severity.toUpperCase()}`}
+                      </span>
+                      <span className="resource-type">{violation.resource_type}</span>
+                    </div>
+                    
+                    <div className="violation-body">
+                      <p className="resource-id"><strong>Resource:</strong> {violation.resource_id}</p>
+                      {violation.resource_name && (
+                        <p className="resource-name"><strong>Name:</strong> {violation.resource_name}</p>
+                      )}
+                      <p className="description">{violation.description}</p>
+                      
+                      {!violation.resolved && (
+                        <div className="remediation">
+                          <strong>🔧 Remediation:</strong>
+                          <p>{violation.remediation}</p>
+                        </div>
+                      )}
+
+                      {violation.resolved && (
+                        <div className="resolved-info">
+                          <p><strong>✅ Marked as fixed:</strong> {new Date(violation.resolved_at!).toLocaleString()}</p>
+                          {violation.resolved_note && (
+                            <p><strong>Note:</strong> {violation.resolved_note}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {!violation.resolved && violation.id && (
+                        <button
+                          className="resolve-btn"
+                          onClick={() => markViolationResolved(violation.id!, index)}
+                          disabled={resolvingViolation === violation.id}
+                        >
+                          {resolvingViolation === violation.id ? 'Marking as Fixed...' : '✓ Mark as Fixed'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

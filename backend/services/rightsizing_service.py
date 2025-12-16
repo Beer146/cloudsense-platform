@@ -132,20 +132,10 @@ class RightSizingService:
             
             ec2_analysis, rds_analysis = self._analyze_resources(analyze_regions, days)
             
-            if not ec2_analysis and not rds_analysis:
-                return {
-                    "status": "success",
-                    "message": "No resources found or insufficient data",
-                    "regions_analyzed": analyze_regions,
-                    "recommendations": {
-                        "ec2": {"total_analyzed": 0, "downsize_opportunities": 0, "monthly_savings": 0, "examples": []},
-                        "rds": {"total_analyzed": 0, "downsize_opportunities": 0, "monthly_savings": 0}
-                    },
-                    "total_monthly_savings": 0,
-                    "analysis_period_days": days,
-                    "timestamp": datetime.utcnow().isoformat() + "Z"
-                }
+            # Calculate duration
+            duration = time.time() - start_time
             
+            # ALWAYS generate recommendations (even if empty)
             ec2_recommender = EC2Recommender(self.config)
             ec2_recommendations = ec2_recommender.generate_recommendations(ec2_analysis)
             
@@ -158,13 +148,20 @@ class RightSizingService:
             optimizer = CostOptimizer(self.config)
             savings_summary = optimizer.calculate_total_savings(ec2_recommendations, ri_recommendations)
             
-            duration = time.time() - start_time
-            
+            # ALWAYS save to database (even if no resources/recommendations)
             scan_id = self._save_to_database(analyze_regions, ec2_recommendations, savings_summary, duration, days)
+            
+            # Determine message
+            message = None
+            if not ec2_analysis and not rds_analysis:
+                message = "No resources found or insufficient data"
+            elif len(ec2_recommendations) == 0 and len(ec2_analysis) > 0:
+                message = "All resources are already well-optimized!"
             
             results = {
                 "status": "success",
                 "scan_id": scan_id,
+                "message": message,
                 "regions_analyzed": analyze_regions,
                 "recommendations": {
                     "ec2": {
