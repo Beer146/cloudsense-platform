@@ -50,11 +50,27 @@ interface ComplianceResults {
   violations?: Violation[]
 }
 
+interface PostMortemResults {
+  status: string
+  scan_id?: number
+  message?: string
+  regions_analyzed?: string[]
+  lookback_hours?: number
+  summary?: {
+    total_errors: number
+    total_warnings: number
+    unique_patterns?: number
+  }
+  recommendations?: string[]
+  error_patterns?: any[]
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'history' | 'insights'>('dashboard')
   const [zombieResults, setZombieResults] = useState<ZombieResults | null>(null)
   const [rightSizingResults, setRightSizingResults] = useState<RightSizingResults | null>(null)
   const [complianceResults, setComplianceResults] = useState<ComplianceResults | null>(null)
+  const [postMortemResults, setPostMortemResults] = useState<PostMortemResults | null>(null)
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({})
   const [showViolations, setShowViolations] = useState(false)
   const [resolvingViolation, setResolvingViolation] = useState<number | null>(null)
@@ -111,6 +127,24 @@ function App() {
       setComplianceResults({ status: 'error' })
     } finally {
       setLoading({ ...loading, compliance: false })
+    }
+  }
+
+  const runPostMortemAnalysis = async () => {
+    setLoading({ ...loading, postmortem: true })
+    try {
+      const response = await fetch('http://localhost:8000/api/postmortem/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lookback_hours: 24 })
+      })
+      const data = await response.json()
+      setPostMortemResults(data)
+    } catch (error) {
+      console.error('Post-mortem analysis failed:', error)
+      setPostMortemResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, postmortem: false })
     }
   }
 
@@ -341,6 +375,55 @@ function App() {
                 
                 {complianceResults.scan_id && (
                   <p className="info-message">✅ Saved to history (ID: {complianceResults.scan_id})</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Post-Mortem Generator */}
+          <div className="service-card">
+            <h2>📋 Post-Mortem Generator</h2>
+            <p>Analyze CloudWatch Logs for errors and incidents</p>
+            <button onClick={runPostMortemAnalysis} disabled={loading.postmortem}>
+              {loading.postmortem ? 'Analyzing...' : 'Generate Report'}
+            </button>
+
+            {postMortemResults && postMortemResults.status === 'success' && (
+              <div className="results">
+                <h3>Results:</h3>
+                
+                {postMortemResults.message && (
+                  <p className="info-message">ℹ️ {postMortemResults.message}</p>
+                )}
+                
+                {postMortemResults.summary && (
+                  <>
+                    <p><strong>Errors Found:</strong> {postMortemResults.summary.total_errors}</p>
+                    <p><strong>Warnings Found:</strong> {postMortemResults.summary.total_warnings}</p>
+                    <p><strong>Lookback Period:</strong> {postMortemResults.lookback_hours} hours</p>
+                    
+                    <div className="breakdown">
+                      <p>Unique Patterns: {postMortemResults.summary.unique_patterns || 0}</p>
+                      <p>Regions: {postMortemResults.regions_analyzed?.join(', ')}</p>
+                    </div>
+
+                    {postMortemResults.recommendations && postMortemResults.recommendations.length > 0 && (
+                      <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
+                        <strong>Top Recommendations:</strong>
+                        {postMortemResults.recommendations.slice(0, 3).map((rec, i) => (
+                          <p key={i} style={{fontSize: '0.9rem', marginTop: '0.5rem'}}>• {rec}</p>
+                        ))}
+                      </div>
+                    )}
+
+                    {postMortemResults.summary.total_errors === 0 && postMortemResults.summary.total_warnings === 0 && (
+                      <p className="success-message">🎉 No incidents found!</p>
+                    )}
+                  </>
+                )}
+                
+                {postMortemResults.scan_id && (
+                  <p className="info-message">✅ Saved to history (ID: {postMortemResults.scan_id})</p>
                 )}
               </div>
             )}

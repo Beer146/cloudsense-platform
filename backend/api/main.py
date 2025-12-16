@@ -6,6 +6,7 @@ from compliance import router as compliance_router
 from history import router as history_router
 from insights import router as insights_router
 from resolutions import router as resolutions_router
+from postmortem_api import router as postmortem_router
 
 app = FastAPI(
     title="CloudSense API",
@@ -29,6 +30,7 @@ app.include_router(compliance_router)
 app.include_router(history_router)
 app.include_router(insights_router)
 app.include_router(resolutions_router)
+app.include_router(postmortem_router)
 
 @app.get("/")
 async def root():
@@ -37,7 +39,8 @@ async def root():
         "services": [
             "Zombie Resource Hunter",
             "Right-Sizing Recommendation Engine",
-            "Compliance-as-Code Validator"
+            "Compliance-as-Code Validator",
+            "Post-Mortem Generator"
         ]
     }
 

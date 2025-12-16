@@ -1,0 +1,26 @@
+aws:
+  regions:
+    - us-east-1
+    - us-west-2
+
+analysis:
+  lookback_hours: 24  # How far back to look for logs
+  error_keywords:
+    - ERROR
+    - CRITICAL
+    - FATAL
+    - Exception
+    - Failed
+    - Timeout
+    - Connection refused
+  warning_keywords:
+    - WARN
+    - WARNING
+    - Deprecated
+    - Retry
+  max_log_events: 1000  # Max events to fetch per log group
+
+report:
+  include_context_lines: 2  # Lines before/after error for context
+  group_similar_errors: true
+  generate_recommendations: true
