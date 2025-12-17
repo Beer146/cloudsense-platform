@@ -37,7 +37,7 @@ body {
   text-align: center;
 }
 
-/* Navigation */
+/* Navigation - FIXED LAYOUT */
 .main-nav {
   background: #1a1a1a;
   padding: 1.5rem 2rem;
@@ -45,6 +45,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  max-width: 100%;
+  position: relative;
 }
 
 .main-nav h1 {
@@ -63,9 +65,9 @@ body {
 .nav-buttons {
   display: flex;
   gap: 0.5rem;
-  flex-shrink: 0;
+  position: absolute;
+  right: 2rem;
 }
-
 .nav-buttons button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -77,7 +79,8 @@ body {
   color: #fff;
   cursor: pointer;
   transition: border-color 0.25s;
-  width: 110px;
+  min-width: 110px;
+  white-space: nowrap;
 }
 
 .nav-buttons button:hover {
@@ -90,17 +93,20 @@ body {
   font-weight: 600;
 }
 
-/* Dashboard */
+/* Dashboard - Fixed Width Layout */
 .dashboard-content {
-  max-width: 1280px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .dashboard-header {
   text-align: center;
   margin-bottom: 3rem;
-  padding: 2rem 0;
+  width: 100%;
 }
 
 .dashboard-header h1 {
@@ -115,22 +121,62 @@ body {
   margin-bottom: 2rem;
 }
 
-/* Service Cards */
-/* Service Cards - 2x2 Grid */
+/* Dashboard Grid Container */
+.dashboard-grid-container {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1400px;
+  align-items: start;
+}
+
+/* Service Cards - 2x2 Grid on LEFT */
 .service-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 1.5rem;
+  text-align: left;
 }
 
-@media (max-width: 1024px) {
-  .service-grid {
-    grid-template-columns: 1fr;
-  }
+/* Info Panel on RIGHT */
+.info-panel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 2rem;
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
 }
 
+.info-panel h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #646cff;
+}
+
+.info-section {
+  margin-bottom: 1.5rem;
+}
+
+.info-section h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-section p {
+  font-size: 0.9rem;
+  color: #888;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* Service Cards */
 .service-card {
   padding: 2rem;
   border-radius: 8px;
@@ -147,11 +193,13 @@ body {
 .service-card h2 {
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
+  text-align: left;
 }
 
 .service-card p {
   color: #888;
   margin-bottom: 1.5rem;
+  text-align: left;
 }
 
 .service-card button {
@@ -420,6 +468,22 @@ body {
   cursor: not-allowed;
 }
 
+/* Responsive */
+@media (max-width: 1200px) {
+  .dashboard-grid-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .info-panel {
+    position: relative;
+    top: 0;
+  }
+  
+  .service-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .service-grid {
     grid-template-columns: 1fr;
@@ -428,9 +492,15 @@ body {
   .main-nav {
     flex-direction: column;
     gap: 1rem;
+    padding-bottom: 4rem;
+  }
+  
+  .main-nav h1 {
+    margin-right: 0;
   }
   
   .nav-buttons {
+    position: static;
     width: 100%;
     justify-content: center;
   }

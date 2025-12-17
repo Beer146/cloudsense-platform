@@ -256,177 +256,204 @@ function App() {
           <p className="subtitle">Unified AWS Cost Optimization & Security Suite</p>
         </div>
 
-        <div className="service-grid">
-          {/* Zombie Resource Hunter */}
-          <div className="service-card">
-            <h2>💀 Zombie Resource Hunter</h2>
-            <p>Find and eliminate unused AWS resources</p>
-            <button onClick={runZombieScan} disabled={loading.zombie}>
-              {loading.zombie ? 'Scanning...' : 'Run Scan'}
-            </button>
+        <div className="dashboard-grid-container">
+          <div className="service-grid">
+            {/* Zombie Resource Hunter */}
+            <div className="service-card">
+              <h2>💀 Zombie Resource Hunter</h2>
+              <p>Find and eliminate unused AWS resources</p>
+              <button onClick={runZombieScan} disabled={loading.zombie}>
+                {loading.zombie ? 'Scanning...' : 'Run Scan'}
+              </button>
 
-            {zombieResults && zombieResults.status === 'success' && (
-              <div className="results">
-                <h3>Results:</h3>
-                <p><strong>Zombies Found:</strong> {zombieResults.total_zombies}</p>
-                <p><strong>Monthly Cost:</strong> ${zombieResults.total_monthly_cost?.toFixed(2)}</p>
-                <p><strong>Regions:</strong> {zombieResults.regions_scanned?.join(', ')}</p>
-                
-                <div className="breakdown">
-                  <p>EC2: {zombieResults.zombies_found?.ec2?.count || 0} instances</p>
-                  <p>EBS: {zombieResults.zombies_found?.ebs?.count || 0} volumes</p>
-                  <p>RDS: {zombieResults.zombies_found?.rds?.count || 0} databases</p>
-                  <p>ELB: {zombieResults.zombies_found?.elb?.count || 0} load balancers</p>
+              {zombieResults && zombieResults.status === 'success' && (
+                <div className="results">
+                  <h3>Results:</h3>
+                  <p><strong>Zombies Found:</strong> {zombieResults.total_zombies}</p>
+                  <p><strong>Monthly Cost:</strong> ${zombieResults.total_monthly_cost?.toFixed(2)}</p>
+                  <p><strong>Regions:</strong> {zombieResults.regions_scanned?.join(', ')}</p>
+                  
+                  <div className="breakdown">
+                    <p>EC2: {zombieResults.zombies_found?.ec2?.count || 0} instances</p>
+                    <p>EBS: {zombieResults.zombies_found?.ebs?.count || 0} volumes</p>
+                    <p>RDS: {zombieResults.zombies_found?.rds?.count || 0} databases</p>
+                    <p>ELB: {zombieResults.zombies_found?.elb?.count || 0} load balancers</p>
+                  </div>
+
+                  {zombieResults.total_zombies === 0 && (
+                    <p className="success-message">🎉 No zombie resources found!</p>
+                  )}
+                  
+                  {zombieResults.scan_id && (
+                    <p className="info-message">✅ Saved to history (ID: {zombieResults.scan_id})</p>
+                  )}
                 </div>
+              )}
+            </div>
 
-                {zombieResults.total_zombies === 0 && (
-                  <p className="success-message">🎉 No zombie resources found!</p>
-                )}
-                
-                {zombieResults.scan_id && (
-                  <p className="info-message">✅ Saved to history (ID: {zombieResults.scan_id})</p>
-                )}
-              </div>
-            )}
-          </div>
+            {/* Right-Sizing Engine */}
+            <div className="service-card">
+              <h2>📏 Right-Sizing Engine</h2>
+              <p>Optimize instance types based on usage</p>
+              <button onClick={runRightSizing} disabled={loading.rightsizing}>
+                {loading.rightsizing ? 'Analyzing...' : 'Analyze Resources'}
+              </button>
 
-          {/* Right-Sizing Engine */}
-          <div className="service-card">
-            <h2>📏 Right-Sizing Engine</h2>
-            <p>Optimize instance types based on usage</p>
-            <button onClick={runRightSizing} disabled={loading.rightsizing}>
-              {loading.rightsizing ? 'Analyzing...' : 'Analyze Resources'}
-            </button>
+              {rightSizingResults && rightSizingResults.status === 'success' && (
+                <div className="results">
+                  <h3>Results:</h3>
+                  
+                  {rightSizingResults.message && (
+                    <p className="info-message">ℹ️ {rightSizingResults.message}</p>
+                  )}
+                  
+                  <p><strong>EC2 Analyzed:</strong> {rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
+                  <p><strong>Potential Savings:</strong> ${rightSizingResults.total_monthly_savings?.toFixed(2)}/month</p>
+                  <p><strong>Regions:</strong> {rightSizingResults.regions_analyzed?.join(', ')}</p>
+                  
+                  <div className="breakdown">
+                    <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0}</p>
+                    <p>Family Switch: {rightSizingResults.recommendations?.ec2?.family_switches || 0}</p>
+                  </div>
 
-            {rightSizingResults && rightSizingResults.status === 'success' && (
-              <div className="results">
-                <h3>Results:</h3>
-                
-                {rightSizingResults.message && (
-                  <p className="info-message">ℹ️ {rightSizingResults.message}</p>
-                )}
-                
-                <p><strong>EC2 Analyzed:</strong> {rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
-                <p><strong>Potential Savings:</strong> ${rightSizingResults.total_monthly_savings?.toFixed(2)}/month</p>
-                <p><strong>Regions:</strong> {rightSizingResults.regions_analyzed?.join(', ')}</p>
-                
-                <div className="breakdown">
-                  <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0}</p>
-                  <p>Family Switch: {rightSizingResults.recommendations?.ec2?.family_switches || 0}</p>
+                  {(rightSizingResults.total_monthly_savings || 0) === 0 && 
+                   (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
+                    <p className="info-message">💡 No running instances found.</p>
+                  )}
+
+                  {(rightSizingResults.total_monthly_savings || 0) === 0 && 
+                   (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
+                    <p className="success-message">🎉 Already optimized!</p>
+                  )}
+                  
+                  {rightSizingResults.scan_id && (
+                    <p className="info-message">✅ Saved to history (ID: {rightSizingResults.scan_id})</p>
+                  )}
                 </div>
+              )}
+            </div>
 
-                {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                 (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
-                  <p className="info-message">💡 No running instances found.</p>
-                )}
+            {/* Compliance Validator */}
+            <div className="service-card">
+              <h2>🔒 Compliance Validator</h2>
+              <p>Check AWS resources for security violations</p>
+              <button onClick={runComplianceScan} disabled={loading.compliance}>
+                {loading.compliance ? 'Scanning...' : 'Run Compliance Scan'}
+              </button>
 
-                {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                 (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
-                  <p className="success-message">🎉 Already optimized!</p>
-                )}
-                
-                {rightSizingResults.scan_id && (
-                  <p className="info-message">✅ Saved to history (ID: {rightSizingResults.scan_id})</p>
-                )}
-              </div>
-            )}
-          </div>
+              {complianceResults && complianceResults.status === 'success' && (
+                <div className="results">
+                  <h3>Results:</h3>
+                  <p><strong>Total Violations:</strong> {complianceResults.total_violations}</p>
+                  <p><strong>Regions:</strong> {complianceResults.regions_scanned?.join(', ')}</p>
+                  
+                  <div className="breakdown">
+                    <p className="critical">🚨 Critical: {complianceResults.by_severity?.critical || 0}</p>
+                    <p className="high">⚠️ High: {complianceResults.by_severity?.high || 0}</p>
+                    <p className="medium">⚡ Medium: {complianceResults.by_severity?.medium || 0}</p>
+                    <p className="low">ℹ️ Low: {complianceResults.by_severity?.low || 0}</p>
+                  </div>
 
-          {/* Compliance Validator */}
-          <div className="service-card">
-            <h2>🔒 Compliance Validator</h2>
-            <p>Check AWS resources for security violations</p>
-            <button onClick={runComplianceScan} disabled={loading.compliance}>
-              {loading.compliance ? 'Scanning...' : 'Run Compliance Scan'}
-            </button>
+                  <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
+                    <p>S3: {complianceResults.by_type?.s3 || 0}</p>
+                    <p>RDS: {complianceResults.by_type?.rds || 0}</p>
+                    <p>Security Groups: {complianceResults.by_type?.security_group || 0}</p>
+                    <p>EC2: {complianceResults.by_type?.ec2 || 0}</p>
+                  </div>
 
-            {complianceResults && complianceResults.status === 'success' && (
-              <div className="results">
-                <h3>Results:</h3>
-                <p><strong>Total Violations:</strong> {complianceResults.total_violations}</p>
-                <p><strong>Regions:</strong> {complianceResults.regions_scanned?.join(', ')}</p>
-                
-                <div className="breakdown">
-                  <p className="critical">🚨 Critical: {complianceResults.by_severity?.critical || 0}</p>
-                  <p className="high">⚠️ High: {complianceResults.by_severity?.high || 0}</p>
-                  <p className="medium">⚡ Medium: {complianceResults.by_severity?.medium || 0}</p>
-                  <p className="low">ℹ️ Low: {complianceResults.by_severity?.low || 0}</p>
+                  {complianceResults.total_violations === 0 && (
+                    <p className="success-message">🎉 Fully compliant!</p>
+                  )}
+
+                  {(complianceResults.total_violations ?? 0) > 0 && complianceResults.violations && (
+                    <button 
+                      onClick={() => setShowViolations(!showViolations)}
+                      style={{ marginTop: '1rem', background: '#D13212' }}
+                    >
+                      {showViolations ? 'Hide Details' : 'Show Violation Details'}
+                    </button>
+                  )}
+                  
+                  {complianceResults.scan_id && (
+                    <p className="info-message">✅ Saved to history (ID: {complianceResults.scan_id})</p>
+                  )}
                 </div>
+              )}
+            </div>
 
-                <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
-                  <p>S3: {complianceResults.by_type?.s3 || 0}</p>
-                  <p>RDS: {complianceResults.by_type?.rds || 0}</p>
-                  <p>Security Groups: {complianceResults.by_type?.security_group || 0}</p>
-                  <p>EC2: {complianceResults.by_type?.ec2 || 0}</p>
-                </div>
+            {/* Post-Mortem Generator */}
+            <div className="service-card">
+              <h2>📋 Post-Mortem Generator</h2>
+              <p>Analyze CloudWatch Logs for errors and incidents</p>
+              <button onClick={runPostMortemAnalysis} disabled={loading.postmortem}>
+                {loading.postmortem ? 'Analyzing...' : 'Generate Report'}
+              </button>
 
-                {complianceResults.total_violations === 0 && (
-                  <p className="success-message">🎉 Fully compliant!</p>
-                )}
-
-                {(complianceResults.total_violations ?? 0) > 0 && complianceResults.violations && (
-                  <button 
-                    onClick={() => setShowViolations(!showViolations)}
-                    style={{ marginTop: '1rem', background: '#D13212' }}
-                  >
-                    {showViolations ? 'Hide Details' : 'Show Violation Details'}
-                  </button>
-                )}
-                
-                {complianceResults.scan_id && (
-                  <p className="info-message">✅ Saved to history (ID: {complianceResults.scan_id})</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Post-Mortem Generator */}
-          <div className="service-card">
-            <h2>📋 Post-Mortem Generator</h2>
-            <p>Analyze CloudWatch Logs for errors and incidents</p>
-            <button onClick={runPostMortemAnalysis} disabled={loading.postmortem}>
-              {loading.postmortem ? 'Analyzing...' : 'Generate Report'}
-            </button>
-
-            {postMortemResults && postMortemResults.status === 'success' && (
-              <div className="results">
-                <h3>Results:</h3>
-                
-                {postMortemResults.message && (
-                  <p className="info-message">ℹ️ {postMortemResults.message}</p>
-                )}
-                
-                {postMortemResults.summary && (
-                  <>
-                    <p><strong>Errors Found:</strong> {postMortemResults.summary.total_errors}</p>
-                    <p><strong>Warnings Found:</strong> {postMortemResults.summary.total_warnings}</p>
-                    <p><strong>Lookback Period:</strong> {postMortemResults.lookback_hours} hours</p>
-                    
-                    <div className="breakdown">
-                      <p>Unique Patterns: {postMortemResults.summary.unique_patterns || 0}</p>
-                      <p>Regions: {postMortemResults.regions_analyzed?.join(', ')}</p>
-                    </div>
-
-                    {postMortemResults.recommendations && postMortemResults.recommendations.length > 0 && (
-                      <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
-                        <strong>Top Recommendations:</strong>
-                        {postMortemResults.recommendations.slice(0, 3).map((rec, i) => (
-                          <p key={i} style={{fontSize: '0.9rem', marginTop: '0.5rem'}}>• {rec}</p>
-                        ))}
+              {postMortemResults && postMortemResults.status === 'success' && (
+                <div className="results">
+                  <h3>Results:</h3>
+                  
+                  {postMortemResults.message && (
+                    <p className="info-message">ℹ️ {postMortemResults.message}</p>
+                  )}
+                  
+                  {postMortemResults.summary && (
+                    <>
+                      <p><strong>Errors Found:</strong> {postMortemResults.summary.total_errors}</p>
+                      <p><strong>Warnings Found:</strong> {postMortemResults.summary.total_warnings}</p>
+                      <p><strong>Lookback Period:</strong> {postMortemResults.lookback_hours} hours</p>
+                      
+                      <div className="breakdown">
+                        <p>Unique Patterns: {postMortemResults.summary.unique_patterns || 0}</p>
+                        <p>Regions: {postMortemResults.regions_analyzed?.join(', ')}</p>
                       </div>
-                    )}
 
-                    {postMortemResults.summary.total_errors === 0 && postMortemResults.summary.total_warnings === 0 && (
-                      <p className="success-message">🎉 No incidents found!</p>
-                    )}
-                  </>
-                )}
-                
-                {postMortemResults.scan_id && (
-                  <p className="info-message">✅ Saved to history (ID: {postMortemResults.scan_id})</p>
-                )}
-              </div>
-            )}
+                      {postMortemResults.recommendations && postMortemResults.recommendations.length > 0 && (
+                        <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
+                          <strong>Top Recommendations:</strong>
+                          {postMortemResults.recommendations.slice(0, 3).map((rec, i) => (
+                            <p key={i} style={{fontSize: '0.9rem', marginTop: '0.5rem'}}>• {rec}</p>
+                          ))}
+                        </div>
+                      )}
+
+                      {postMortemResults.summary.total_errors === 0 && postMortemResults.summary.total_warnings === 0 && (
+                        <p className="success-message">🎉 No incidents found!</p>
+                      )}
+                    </>
+                  )}
+                  
+                  {postMortemResults.scan_id && (
+                    <p className="info-message">✅ Saved to history (ID: {postMortemResults.scan_id})</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Info Panel */}
+          <div className="info-panel">
+            <h2>📊 Platform Overview</h2>
+            
+            <div className="info-section">
+              <h3>💀 Zombie Hunter</h3>
+              <p>Identifies idle EC2 instances, unattached EBS volumes, and unused resources costing you money.</p>
+            </div>
+
+            <div className="info-section">
+              <h3>📏 Right-Sizing</h3>
+              <p>Analyzes CPU and memory usage to recommend optimal instance types and reduce costs.</p>
+            </div>
+
+            <div className="info-section">
+              <h3>🔒 Compliance</h3>
+              <p>Scans for security violations like open ports, unencrypted storage, and missing tags.</p>
+            </div>
+
+            <div className="info-section">
+              <h3>📋 Post-Mortem</h3>
+              <p>Analyzes CloudWatch Logs to identify errors, warnings, and incident patterns.</p>
+            </div>
           </div>
         </div>
 
