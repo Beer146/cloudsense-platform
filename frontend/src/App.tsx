@@ -10,6 +10,8 @@ interface ZombieResults {
   total_zombies?: number
   total_monthly_cost?: number
   zombies_found?: any
+  at_risk_resources?: any[]
+  at_risk_count?: number
 }
 
 interface RightSizingResults {
@@ -258,10 +260,10 @@ function App() {
 
         <div className="dashboard-grid-container">
           <div className="service-grid">
-            {/* Zombie Resource Hunter */}
+            {/* Zombie Resource Hunter with ML */}
             <div className="service-card">
               <h2>💀 Zombie Resource Hunter</h2>
-              <p>Find and eliminate unused AWS resources</p>
+              <p>Find and eliminate unused AWS resources with ML predictions</p>
               <button onClick={runZombieScan} disabled={loading.zombie}>
                 {loading.zombie ? 'Scanning...' : 'Run Scan'}
               </button>
@@ -280,8 +282,17 @@ function App() {
                     <p>ELB: {zombieResults.zombies_found?.elb?.count || 0} load balancers</p>
                   </div>
 
-                  {zombieResults.total_zombies === 0 && (
-                    <p className="success-message">🎉 No zombie resources found!</p>
+                  {/* ML Predictions */}
+                  {zombieResults.at_risk_count !== undefined && zombieResults.at_risk_count > 0 && (
+                    <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
+                      <p style={{color: '#ffa500', fontWeight: 'bold'}}>
+                        🤖 ML Prediction: {zombieResults.at_risk_count} running resource{zombieResults.at_risk_count > 1 ? 's' : ''} at HIGH RISK of becoming zombie
+                      </p>
+                    </div>
+                  )}
+
+                  {zombieResults.total_zombies === 0 && (!zombieResults.at_risk_count || zombieResults.at_risk_count === 0) && (
+                    <p className="success-message">🎉 No zombie resources found and no resources at risk!</p>
                   )}
                   
                   {zombieResults.scan_id && (
@@ -436,8 +447,8 @@ function App() {
             <h2>📊 Platform Overview</h2>
             
             <div className="info-section">
-              <h3>💀 Zombie Hunter</h3>
-              <p>Identifies idle EC2 instances, unattached EBS volumes, and unused resources costing you money.</p>
+              <h3>💀 Zombie Hunter 🤖</h3>
+              <p>Identifies idle EC2 instances and unused resources. <strong>ML-powered predictions</strong> flag resources at risk of becoming zombies before they waste money.</p>
             </div>
 
             <div className="info-section">

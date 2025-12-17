@@ -1,117 +1,142 @@
 """
-Zombie Resource Hunter Service
-Wrapper for the zombie hunter scanner
+Zombie Resource Detection Service with ML Predictions
 """
+import boto3
+from datetime import datetime
+import time
 import sys
 from pathlib import Path
-from datetime import datetime
-import yaml
-import time
 
-# Add scripts to Python path
-scripts_path = Path(__file__).parent.parent.parent / "scripts" / "zombie_hunter"
-sys.path.insert(0, str(scripts_path))
-
-# Import from zombie_hunter
-from scanners import EC2Scanner, EBSScanner, RDSScanner, ELBScanner
-from cost_calculator import CostCalculator
+# Import ML predictor
+from services.ml_zombie_predictor import ZombiePredictor
 
 # Import database models
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import Scan, ZombieResource, get_db
+from models import Scan, ZombieResource
 
 
-class ZombieHunterService:
+class ZombieService:
     def __init__(self):
-        self.config_path = scripts_path / "config.yaml"
-        self.config = self._load_config()
+        self.predictor = ZombiePredictor()
+        self.pricing = {
+            't2.micro': 0.0116,
+            't2.small': 0.023,
+            't2.medium': 0.0464,
+            't3.micro': 0.0104,
+            't3.small': 0.0208,
+            't3.medium': 0.0416,
+        }
     
-    def _load_config(self):
-        """Load configuration from YAML file"""
+    def _calculate_monthly_cost(self, instance_type):
+        """Calculate monthly cost for an instance"""
+        hourly_cost = self.pricing.get(instance_type, 0.05)  # Default $0.05/hr
+        return hourly_cost * 730  # Hours per month
+    
+    def _scan_ec2_zombies(self, region):
+        """Scan for zombie EC2 instances"""
+        zombies = []
+        ec2 = boto3.client('ec2', region_name=region)
+        
         try:
-            with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-            return config
+            response = ec2.describe_instances()
+            
+            for reservation in response['Reservations']:
+                for instance in reservation['Instances']:
+                    state = instance['State']['Name']
+                    
+                    # Stopped instances are zombies
+                    if state == 'stopped':
+                        tags = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
+                        instance_type = instance.get('InstanceType', 't2.micro')
+                        monthly_cost = self._calculate_monthly_cost(instance_type)
+                        
+                        zombies.append({
+                            'type': 'EC2',
+                            'id': instance['InstanceId'],
+                            'name': tags.get('Name', 'Unnamed'),
+                            'region': region,
+                            'status': state,
+                            'reason': 'Instance is stopped',
+                            'instance_type': instance_type,
+                            'monthly_cost': monthly_cost,
+                            'launch_time': instance.get('LaunchTime'),
+                            'tags': tags,
+                            'details': {}
+                        })
         except Exception as e:
-            print(f"Error loading config: {e}")
-            return {
-                'aws': {'regions': ['us-east-1', 'us-west-2']},
-                'thresholds': {
-                    'ec2': {'stopped_days': 7, 'cpu_threshold': 5},
-                    'ebs': {'unattached_days': 7},
-                    'rds': {'idle_days': 7, 'connection_threshold': 1},
-                    'elb': {'no_traffic_days': 7, 'request_threshold': 10}
-                }
-            }
+            print(f"Error scanning EC2 in {region}: {e}")
+        
+        return zombies
     
-    def _scan_resources(self, regions, resource_types=None):
-        """Scan for zombie resources"""
-        all_zombies = []
+    def _get_active_resources(self, regions):
+        """Get list of active (running) EC2 instances for risk prediction"""
+        active_resources = []
         
         for region in regions:
-            print(f"Scanning {region}...")
-            
-            scanners_to_run = []
-            
-            if resource_types is None or 'ec2' in resource_types:
-                scanners_to_run.append(('EC2', EC2Scanner(region, self.config)))
-            
-            if resource_types is None or 'ebs' in resource_types:
-                scanners_to_run.append(('EBS', EBSScanner(region, self.config)))
-            
-            if resource_types is None or 'rds' in resource_types:
-                scanners_to_run.append(('RDS', RDSScanner(region, self.config)))
-            
-            if resource_types is None or 'elb' in resource_types:
-                scanners_to_run.append(('ELB', ELBScanner(region, self.config)))
-            
-            for scanner_name, scanner in scanners_to_run:
-                try:
-                    zombies = scanner.scan()
-                    all_zombies.extend(zombies)
-                    print(f"Found {len(zombies)} {scanner_name} zombies in {region}")
-                except Exception as e:
-                    print(f"Error scanning {scanner_name} in {region}: {str(e)}")
+            try:
+                ec2 = boto3.client('ec2', region_name=region)
+                response = ec2.describe_instances(
+                    Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+                )
+                
+                for reservation in response['Reservations']:
+                    for instance in reservation['Instances']:
+                        tags = {tag['Key']: tag['Value'] for tag in instance.get('Tags', [])}
+                        
+                        active_resources.append({
+                            'id': instance['InstanceId'],
+                            'type': 'EC2',
+                            'instance_type': instance['InstanceType'],
+                            'state': instance['State'],
+                            'launch_time': instance.get('LaunchTime'),
+                            'region': region,
+                            'tags': tags,
+                            'name': tags.get('Name', 'Unnamed')
+                        })
+            except Exception as e:
+                print(f"Error getting active resources in {region}: {e}")
         
-        return all_zombies
+        return active_resources
     
-    def _save_to_database(self, scan_regions, zombies, cost_summary, duration):
-        """Save scan results to database"""
+    def _save_to_database(self, scan_regions, zombies_data, duration):
+        """Save zombie scan results to database"""
         from models.database import SessionLocal
         db = SessionLocal()
         
         try:
-            # Create scan record
+            total_cost = sum(z.get('monthly_cost', 0) for z in zombies_data)
+            
             scan = Scan(
                 scan_type='zombie',
                 status='success',
                 regions=scan_regions,
-                total_resources=len(zombies),
-                total_cost=cost_summary.get('total_monthly_savings', 0),
-                total_savings=cost_summary.get('total_annual_savings', 0),
+                total_resources=len(zombies_data),
+                total_cost=total_cost,
+                total_savings=0,
                 duration_seconds=duration
             )
             db.add(scan)
-            db.flush()  # Get scan ID
+            db.flush()
             
-            # Create zombie resource records
-            for zombie in zombies:
+            for zombie in zombies_data:
                 zombie_record = ZombieResource(
                     scan_id=scan.id,
-                    resource_type=zombie.get('resource_type', 'unknown'),
-                    resource_id=zombie.get('resource_id', 'unknown'),
-                    name=zombie.get('name', 'N/A'),
-                    region=zombie.get('region', 'unknown'),
-                    status=zombie.get('status', 'unknown'),
-                    reason=zombie.get('reason', ''),
+                    resource_type=zombie.get('type', 'unknown'),
+                    resource_id=zombie.get('id', 'unknown'),
+                    name=zombie.get('name'),
+                    region=zombie.get('region'),
+                    status=zombie.get('status'),
+                    reason=zombie.get('reason'),
                     instance_type=zombie.get('instance_type'),
-                    monthly_cost=zombie.get('estimated_monthly_cost', zombie.get('monthly_cost', 0)),
-                    details=zombie  # Store full zombie data as JSON
+                    monthly_cost=zombie.get('monthly_cost', 0),
+                    details=zombie.get('details', {})
                 )
                 db.add(zombie_record)
             
             db.commit()
-            print(f"✅ Saved scan results to database (Scan ID: {scan.id})")
+            db.refresh(scan)
+            
+            print(f"✅ Saved zombie scan to database (Scan ID: {scan.id})")
             return scan.id
             
         except Exception as e:
@@ -121,82 +146,75 @@ class ZombieHunterService:
         finally:
             db.close()
     
-    async def run_scan(self, regions: list = None):
-        """Run zombie resource scan"""
+    async def scan(self, regions: list = None):
+        """Run zombie resource scan with ML predictions"""
         start_time = time.time()
         
         try:
-            scan_regions = regions or self.config['aws']['regions']
+            scan_regions = regions or ['us-east-1', 'us-west-2']
+            
+            print(f"\n🔍 Starting Zombie Scan with ML Predictions...")
+            print(f"📍 Regions: {', '.join(scan_regions)}\n")
             
             # Scan for zombies
-            zombies = self._scan_resources(scan_regions)
+            all_zombies = []
+            for region in scan_regions:
+                zombies = self._scan_ec2_zombies(region)
+                all_zombies.extend(zombies)
             
-            print(f"\nTotal zombies found: {len(zombies)}")
-            for zombie in zombies:
-                cost = zombie.get('estimated_monthly_cost', zombie.get('monthly_cost', 0))
-                print(f"  - {zombie.get('resource_type', 'unknown')}: {zombie.get('resource_id', 'unknown')} - ${cost:.2f}/mo")
+            # Add ML predictions to each zombie
+            for zombie in all_zombies:
+                prediction = self.predictor.predict_zombie_probability(
+                    resource=zombie,
+                    region=zombie.get('region', 'us-east-1')
+                )
+                zombie['ml_prediction'] = prediction
             
-            # Calculate costs
-            calculator = CostCalculator()
-            cost_summary = calculator.calculate_total_savings(zombies)
+            # Scan ACTIVE resources for risk prediction
+            active_resources = self._get_active_resources(scan_regions)
+            at_risk_resources = []
             
-            # Calculate duration
+            for resource in active_resources:
+                prediction = self.predictor.predict_zombie_probability(
+                    resource=resource,
+                    region=resource.get('region', 'us-east-1')
+                )
+                
+                # Flag high-risk resources (>= 50% chance of becoming zombie)
+                if prediction['zombie_probability'] >= 0.5:
+                    resource['ml_prediction'] = prediction
+                    at_risk_resources.append(resource)
+            
             duration = time.time() - start_time
             
             # Save to database
-            scan_id = self._save_to_database(scan_regions, zombies, cost_summary, duration)
+            scan_id = self._save_to_database(scan_regions, all_zombies, duration)
             
-            # Count by type and calculate costs
-            ec2_zombies = [z for z in zombies if z.get('resource_type') == 'EC2']
-            ebs_zombies = [z for z in zombies if z.get('resource_type') == 'EBS']
-            rds_zombies = [z for z in zombies if z.get('resource_type') == 'RDS']
-            elb_zombies = [z for z in zombies if z.get('resource_type') == 'ELB']
-            
-            def get_cost(zombie):
-                return zombie.get('estimated_monthly_cost', zombie.get('monthly_cost', 0))
+            # Calculate totals
+            total_cost = sum(z.get('monthly_cost', 0) for z in all_zombies)
             
             # Format response
-            results = {
+            return {
                 "status": "success",
                 "scan_id": scan_id,
                 "regions_scanned": scan_regions,
+                "total_zombies": len(all_zombies),
+                "total_monthly_cost": total_cost,
                 "zombies_found": {
                     "ec2": {
-                        "count": len(ec2_zombies),
-                        "stopped_instances": len(ec2_zombies),
-                        "monthly_cost": sum([get_cost(z) for z in ec2_zombies]),
-                        "details": ec2_zombies
-                    },
-                    "ebs": {
-                        "count": len(ebs_zombies),
-                        "unattached_volumes": len(ebs_zombies),
-                        "monthly_cost": sum([get_cost(z) for z in ebs_zombies]),
-                        "details": ebs_zombies
-                    },
-                    "rds": {
-                        "count": len(rds_zombies),
-                        "idle_databases": len(rds_zombies),
-                        "monthly_cost": sum([get_cost(z) for z in rds_zombies]),
-                        "details": rds_zombies
-                    },
-                    "elb": {
-                        "count": len(elb_zombies),
-                        "unused_load_balancers": len(elb_zombies),
-                        "monthly_cost": sum([get_cost(z) for z in elb_zombies]),
-                        "details": elb_zombies
+                        "count": len([z for z in all_zombies if z['type'] == 'EC2']),
+                        "zombies": [z for z in all_zombies if z['type'] == 'EC2']
                     }
                 },
-                "total_zombies": len(zombies),
-                "total_monthly_cost": cost_summary.get('total_monthly_savings', 0),
-                "total_annual_cost": cost_summary.get('total_annual_savings', 0),
+                "zombies": all_zombies,
+                "at_risk_resources": at_risk_resources,
+                "at_risk_count": len(at_risk_resources),
                 "scan_timestamp": datetime.utcnow().isoformat() + "Z",
                 "duration_seconds": duration
             }
             
-            return results
-            
         except Exception as e:
-            print(f"Scan error: {str(e)}")
+            print(f"Zombie scan error: {str(e)}")
             import traceback
             traceback.print_exc()
             return {

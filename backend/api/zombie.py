@@ -9,32 +9,35 @@ from pathlib import Path
 
 # Add services to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.zombie_service import ZombieHunterService
+from services.zombie_service import ZombieService
 
-router = APIRouter(prefix="/api/zombie", tags=["Zombie Hunter"])
+router = APIRouter(prefix="/api/zombie", tags=["Zombie"])
+
 
 class ScanRequest(BaseModel):
     regions: Optional[List[str]] = None
 
+
 @router.post("/scan")
-async def run_zombie_scan(request: ScanRequest = None):
+async def scan_zombies(request: ScanRequest = None):
     """
-    Run zombie resource scan across AWS regions
+    Scan AWS for zombie resources with ML risk predictions
     """
     try:
-        service = ZombieHunterService()
+        service = ZombieService()
         regions = request.regions if request else None
-        results = await service.run_scan(regions=regions)
+        results = await service.scan(regions=regions)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/status")
-async def get_scan_status():
+async def get_status():
     """
     Get status of zombie hunter service
     """
     return {
         "status": "ready",
-        "service": "Zombie Resource Hunter"
+        "service": "Zombie Resource Hunter with ML"
     }
