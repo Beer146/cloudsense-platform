@@ -69,6 +69,26 @@ interface PostMortemResults {
   }
   recommendations?: string[]
   error_patterns?: any[]
+  llm_analysis?: {
+    executive_summary?: string
+    root_causes?: Array<{
+      title: string
+      description: string
+      evidence: string
+      impact: string
+      affected_services: string[]
+    }>
+    recommendations?: Array<{
+      priority: string
+      title: string
+      description: string
+      aws_service: string
+      documentation_link?: string
+    }>
+    severity_assessment?: string
+    affected_services?: string[]
+    preventive_measures?: string[]
+  }
 }
 
 function App() {
@@ -369,7 +389,7 @@ function App() {
                     <p>S3: {complianceResults.by_type?.s3 || 0}</p>
                     <p>RDS: {complianceResults.by_type?.rds || 0}</p>
                     <p>Security Groups: {complianceResults.by_type?.security_group || 0}</p>
-                    <p>EC2: {complianceResults.by_type?.ec2 || 0}</p>
+                    <p>EC2: {complianceResults.by_type?.EC2 || 0}</p>
                   </div>
 
                   {complianceResults.total_violations === 0 && (
@@ -392,10 +412,10 @@ function App() {
               )}
             </div>
 
-            {/* Post-Mortem Generator */}
+            {/* Post-Mortem Generator with LLM */}
             <div className="service-card">
               <h2>📋 Post-Mortem Generator</h2>
-              <p>Analyze CloudWatch Logs for errors and incidents</p>
+              <p>Analyze CloudWatch Logs with AI-powered root cause analysis</p>
               <button onClick={runPostMortemAnalysis} disabled={loading.postmortem}>
                 {loading.postmortem ? 'Analyzing...' : 'Generate Report'}
               </button>
@@ -419,7 +439,88 @@ function App() {
                         <p>Regions: {postMortemResults.regions_analyzed?.join(', ')}</p>
                       </div>
 
-                      {postMortemResults.recommendations && postMortemResults.recommendations.length > 0 && (
+                      {/* LLM Analysis Section */}
+                      {postMortemResults.llm_analysis && (
+                        <div className="breakdown" style={{marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '2px solid #646cff'}}>
+                          <p style={{color: '#646cff', fontWeight: 'bold', marginBottom: '1rem'}}>
+                            🤖 AI-Powered Analysis
+                          </p>
+                          
+                          {/* Executive Summary */}
+                          {postMortemResults.llm_analysis.executive_summary && (
+                            <div style={{marginBottom: '1rem', padding: '1rem', background: 'rgba(100, 108, 255, 0.1)', borderRadius: '8px', borderLeft: '3px solid #646cff'}}>
+                              <strong style={{color: '#646cff'}}>Executive Summary:</strong>
+                              <p style={{marginTop: '0.5rem', fontSize: '0.95rem', lineHeight: '1.6'}}>
+                                {postMortemResults.llm_analysis.executive_summary}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Severity Assessment */}
+                          {postMortemResults.llm_analysis.severity_assessment && (
+                            <p style={{marginBottom: '0.5rem'}}>
+                              <strong>Severity:</strong> 
+                              <span style={{
+                                marginLeft: '0.5rem',
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '4px',
+                                background: postMortemResults.llm_analysis.severity_assessment === 'CRITICAL' ? '#D13212' :
+                                           postMortemResults.llm_analysis.severity_assessment === 'HIGH' ? '#FF9900' :
+                                           postMortemResults.llm_analysis.severity_assessment === 'MEDIUM' ? '#FFD700' : '#146EB4',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                              }}>
+                                {postMortemResults.llm_analysis.severity_assessment}
+                              </span>
+                            </p>
+                          )}
+
+                          {/* Root Causes */}
+                          {postMortemResults.llm_analysis.root_causes && postMortemResults.llm_analysis.root_causes.length > 0 && (
+                            <div style={{marginTop: '1rem'}}>
+                              <strong style={{color: '#FF9900'}}>🔍 Root Causes Identified: {postMortemResults.llm_analysis.root_causes.length}</strong>
+                              {postMortemResults.llm_analysis.root_causes.slice(0, 2).map((cause, i) => (
+                                <div key={i} style={{marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(255, 153, 0, 0.1)', borderRadius: '6px', fontSize: '0.9rem'}}>
+                                  <div style={{fontWeight: 'bold', color: '#FF9900'}}>{i + 1}. {cause.title}</div>
+                                  <div style={{marginTop: '0.25rem', fontSize: '0.85rem'}}>{cause.description}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Recommendations */}
+                          {postMortemResults.llm_analysis.recommendations && postMortemResults.llm_analysis.recommendations.length > 0 && (
+                            <div style={{marginTop: '1rem'}}>
+                              <strong style={{color: '#42d392'}}>💡 AI Recommendations:</strong>
+                              {postMortemResults.llm_analysis.recommendations.slice(0, 3).map((rec, i) => (
+                                <div key={i} style={{marginTop: '0.5rem', fontSize: '0.9rem'}}>
+                                  <span style={{
+                                    padding: '0.2rem 0.5rem',
+                                    borderRadius: '3px',
+                                    background: rec.priority === 'CRITICAL' ? '#D13212' : rec.priority === 'HIGH' ? '#FF9900' : '#FFD700',
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    marginRight: '0.5rem'
+                                  }}>
+                                    {rec.priority}
+                                  </span>
+                                  <strong>{rec.title}</strong>
+                                  {rec.documentation_link && (
+                                    <a href={rec.documentation_link} target="_blank" rel="noopener noreferrer" style={{marginLeft: '0.5rem', color: '#646cff', fontSize: '0.85rem'}}>
+                                      📚 Docs
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Traditional Recommendations (if no LLM) */}
+                      {!postMortemResults.llm_analysis && postMortemResults.recommendations && postMortemResults.recommendations.length > 0 && (
                         <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem'}}>
                           <strong>Top Recommendations:</strong>
                           {postMortemResults.recommendations.slice(0, 3).map((rec, i) => (
@@ -462,8 +563,8 @@ function App() {
             </div>
 
             <div className="info-section">
-              <h3>📋 Post-Mortem</h3>
-              <p>Analyzes CloudWatch Logs to identify errors, warnings, and incident patterns.</p>
+              <h3>📋 Post-Mortem 🤖</h3>
+              <p>Analyzes CloudWatch Logs with <strong>AI-powered root cause analysis</strong> using Claude API for intelligent insights and recommendations.</p>
             </div>
           </div>
         </div>
