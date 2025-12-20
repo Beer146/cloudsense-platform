@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Navbar from './components/Navbar'
 import History from './pages/History'
 import Insights from './pages/Insights'
 import './App.css'
@@ -42,6 +43,9 @@ interface ComplianceResults {
   scan_id?: number
   regions_scanned?: string[]
   total_violations?: number
+  rule_based_violations?: number
+  ml_anomalies?: number
+  baseline_trained?: boolean
   by_severity?: {
     critical: number
     high: number
@@ -212,14 +216,7 @@ function App() {
   if (currentPage === 'history') {
     return (
       <div className="App">
-        <nav className="main-nav">
-          <h1>CloudSense Platform</h1>
-          <div className="nav-buttons">
-            <button onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
-            <button className="active" onClick={() => setCurrentPage('history')}>History</button>
-            <button onClick={() => setCurrentPage('insights')}>Insights</button>
-          </div>
-        </nav>
+        <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />
         <History />
       </div>
     )
@@ -228,14 +225,7 @@ function App() {
   if (currentPage === 'insights') {
     return (
       <div className="App">
-        <nav className="main-nav">
-          <h1>CloudSense Platform</h1>
-          <div className="nav-buttons">
-            <button onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
-            <button onClick={() => setCurrentPage('history')}>History</button>
-            <button className="active" onClick={() => setCurrentPage('insights')}>Insights</button>
-          </div>
-        </nav>
+        <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />
         <Insights />
       </div>
     )
@@ -243,14 +233,7 @@ function App() {
 
   return (
     <div className="App">
-      <nav className="main-nav">
-        <h1>CloudSense Platform</h1>
-        <div className="nav-buttons">
-          <button className="active" onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
-          <button onClick={() => setCurrentPage('history')}>History</button>
-          <button onClick={() => setCurrentPage('insights')}>Insights</button>
-        </div>
-      </nav>
+      <Navbar currentPage={currentPage} onNavigate={setCurrentPage} />
 
       <div className="dashboard-content">
         <div className="dashboard-header">
@@ -282,7 +265,6 @@ function App() {
                     <p>ELB: {zombieResults.zombies_found?.elb?.count || 0} load balancers</p>
                   </div>
 
-                  {/* ML Predictions */}
                   {zombieResults.at_risk_count !== undefined && zombieResults.at_risk_count > 0 && (
                     <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
                       <p style={{color: '#ffa500', fontWeight: 'bold'}}>
@@ -344,10 +326,10 @@ function App() {
               )}
             </div>
 
-            {/* Compliance Validator */}
+            {/* Compliance Validator with ML Anomaly Detection */}
             <div className="service-card">
               <h2>🔒 Compliance Validator</h2>
-              <p>Check AWS resources for security violations</p>
+              <p>Check AWS resources for security violations with ML anomaly detection</p>
               <button onClick={runComplianceScan} disabled={loading.compliance}>
                 {loading.compliance ? 'Scanning...' : 'Run Compliance Scan'}
               </button>
@@ -357,6 +339,24 @@ function App() {
                   <h3>Results:</h3>
                   <p><strong>Total Violations:</strong> {complianceResults.total_violations}</p>
                   <p><strong>Regions:</strong> {complianceResults.regions_scanned?.join(', ')}</p>
+                  
+                  {/* ML Detection Stats */}
+                  {(complianceResults.rule_based_violations !== undefined || complianceResults.ml_anomalies !== undefined) && (
+                    <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
+                      <p style={{color: '#888'}}>📋 Rule-based violations: {complianceResults.rule_based_violations || 0}</p>
+                      <p style={{color: '#ffa500'}}>🤖 ML Anomalies detected: {complianceResults.ml_anomalies || 0}</p>
+                      {complianceResults.baseline_trained && (
+                        <p style={{color: '#42d392', fontSize: '0.9rem', marginTop: '0.5rem'}}>
+                          ✅ Baseline model trained on infrastructure
+                        </p>
+                      )}
+                      {!complianceResults.baseline_trained && complianceResults.ml_anomalies === 0 && (
+                        <p style={{color: '#888', fontSize: '0.9rem', marginTop: '0.5rem'}}>
+                          ℹ️ Need 2+ instances to train baseline
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="breakdown">
                     <p className="critical">🚨 Critical: {complianceResults.by_severity?.critical || 0}</p>
@@ -457,8 +457,8 @@ function App() {
             </div>
 
             <div className="info-section">
-              <h3>🔒 Compliance</h3>
-              <p>Scans for security violations like open ports, unencrypted storage, and missing tags.</p>
+              <h3>🔒 Compliance 🤖</h3>
+              <p>Scans for security violations with <strong>ML anomaly detection</strong> to catch unusual configurations that rules might miss.</p>
             </div>
 
             <div className="info-section">

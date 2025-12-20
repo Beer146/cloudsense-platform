@@ -1,5 +1,6 @@
 """
-Compliance Validator API Endpoints
+Compliance Validation API Endpoints
+Enhanced with ML Anomaly Detection
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -9,32 +10,44 @@ from pathlib import Path
 
 # Add services to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.compliance_service import ComplianceService
+from services.compliance_service_enhanced import EnhancedComplianceService
 
 router = APIRouter(prefix="/api/compliance", tags=["Compliance"])
 
+
 class ScanRequest(BaseModel):
     regions: Optional[List[str]] = None
+    train_baseline: Optional[bool] = False
+
 
 @router.post("/scan")
-async def run_compliance_scan(request: ScanRequest = None):
+async def scan_compliance(request: ScanRequest = None):
     """
-    Run compliance scan across AWS resources
+    Scan AWS resources for compliance violations
+    Enhanced with ML-powered anomaly detection
     """
     try:
-        service = ComplianceService()
-        regions = request.regions if request else None
-        results = await service.run_scan(regions=regions)
+        service = EnhancedComplianceService()
+        
+        regions = None
+        train_baseline = False
+        
+        if request:
+            regions = request.regions
+            train_baseline = request.train_baseline
+        
+        results = await service.scan(regions=regions, train_baseline=train_baseline)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/status")
-async def get_scan_status():
+async def get_status():
     """
     Get status of compliance service
     """
     return {
         "status": "ready",
-        "service": "Compliance-as-Code Validator"
+        "service": "Compliance Validator with ML Anomaly Detection"
     }

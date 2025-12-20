@@ -1,0 +1,69 @@
+/* Navbar - TRULY FIXED LAYOUT */
+.navbar {
+  background: #1a1a1a;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #333;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  min-height: 72px;
+  
+  /* THIS IS THE KEY - Container for centering */
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-inner {
+  /* Fixed width container - matches dashboard max-width */
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #646cff 0%, #535bf2 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: translateZ(0);
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.navbar-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.navbar-buttons button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+  transition: border-color 0.25s;
+  width: 110px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.navbar-buttons button:hover {
+  border-color: #646cff;
+}
+
+.navbar-buttons button.active {
+  background-color: #646cff;
+  border-color: #646cff;
+  font-weight: 600;
+}
