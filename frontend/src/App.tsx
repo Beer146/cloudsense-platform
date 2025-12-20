@@ -22,6 +22,8 @@ interface RightSizingResults {
   total_monthly_savings?: number
   recommendations?: any
   message?: string
+  total_analyzed?: number
+  lstm_enhanced_count?: number
 }
 
 interface Violation {
@@ -304,10 +306,10 @@ function App() {
               )}
             </div>
 
-            {/* Right-Sizing Engine */}
+            {/* Right-Sizing Engine with LSTM */}
             <div className="service-card">
               <h2>📏 Right-Sizing Engine</h2>
-              <p>Optimize instance types based on usage</p>
+              <p>Optimize instance types with LSTM workload forecasting</p>
               <button onClick={runRightSizing} disabled={loading.rightsizing}>
                 {loading.rightsizing ? 'Analyzing...' : 'Analyze Resources'}
               </button>
@@ -320,9 +322,22 @@ function App() {
                     <p className="info-message">ℹ️ {rightSizingResults.message}</p>
                   )}
                   
-                  <p><strong>EC2 Analyzed:</strong> {rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
+                  <p><strong>EC2 Analyzed:</strong> {rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
                   <p><strong>Potential Savings:</strong> ${rightSizingResults.total_monthly_savings?.toFixed(2)}/month</p>
                   <p><strong>Regions:</strong> {rightSizingResults.regions_analyzed?.join(', ')}</p>
+                  
+                  {/* LSTM Enhancement Stats */}
+                  {(rightSizingResults.lstm_enhanced_count !== undefined) && (
+                    <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
+                      <p style={{color: '#888'}}>📊 Traditional analysis: {(rightSizingResults.total_analyzed || 0) - (rightSizingResults.lstm_enhanced_count || 0)}</p>
+                      <p style={{color: '#646cff'}}>🤖 LSTM-enhanced forecasts: {rightSizingResults.lstm_enhanced_count || 0}</p>
+                      {rightSizingResults.lstm_enhanced_count > 0 && (
+                        <p style={{color: '#42d392', fontSize: '0.9rem', marginTop: '0.5rem'}}>
+                          ✅ Using neural networks for 7-day workload prediction
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="breakdown">
                     <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0}</p>
@@ -330,12 +345,12 @@ function App() {
                   </div>
 
                   {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                   (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
+                   (rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
                     <p className="info-message">💡 No running instances found.</p>
                   )}
 
                   {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                   (rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
+                   (rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
                     <p className="success-message">🎉 Already optimized!</p>
                   )}
                   
@@ -553,8 +568,8 @@ function App() {
             </div>
 
             <div className="info-section">
-              <h3>📏 Right-Sizing</h3>
-              <p>Analyzes CPU and memory usage to recommend optimal instance types and reduce costs.</p>
+              <h3>📏 Right-Sizing 🤖</h3>
+              <p>Analyzes CPU and memory usage with <strong>LSTM neural networks</strong> to forecast workload patterns and recommend optimal instance types proactively.</p>
             </div>
 
             <div className="info-section">
