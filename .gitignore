@@ -49,3 +49,4 @@ config
 *.db
 *.sqlite
 *.sqlite3
+backend/.env.backup*
