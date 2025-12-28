@@ -253,12 +253,22 @@ class EnhancedRightSizingService:
             except Exception as e:
                 print(f"Error scanning {region}: {e}")
         
+        duration = time.time() - start_time
+        
+        # ALWAYS save to database, even with no instances
+        results = {
+            'total_analyzed': len(all_instances),
+            'lstm_enhanced_count': 0,
+            'total_monthly_savings': 0
+        }
+        scan_id = self._save_to_database(scan_regions, results, duration)
+        
         if not all_instances:
             print("ℹ️ No running instances found")
             
-            duration = time.time() - start_time
             return {
                 'status': 'success',
+                'scan_id': scan_id,  # FIXED: Now includes scan_id
                 'message': 'No running instances to analyze',
                 'total_analyzed': 0,
                 'lstm_enhanced_count': 0,
@@ -301,11 +311,11 @@ class EnhancedRightSizingService:
         
         duration = time.time() - start_time
         
-        # Save to database
+        # Update results and save again
         results = {
             'total_analyzed': len(all_instances),
             'lstm_enhanced_count': len(lstm_analyses),
-            'total_monthly_savings': 0  # Could calculate from recommendations
+            'total_monthly_savings': 0
         }
         scan_id = self._save_to_database(scan_regions, results, duration)
         
