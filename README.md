@@ -17,14 +17,6 @@
 
 CloudSense is a full-stack AWS cost intelligence platform that consolidates four intelligent services into one unified application. Built from the ground up in 13+ hours with cutting-edge ML/AI technologies, it helps organizations optimize cloud spending, enhance security posture, and prevent incidents before they happen.
 
-### Key Achievements
-
-- **4 ML/AI Models** - Random Forest, Isolation Forest, LSTM, Claude API
-- **Real-time Analysis** - Live AWS integration across multiple regions
-- **Cost Optimization** - Automated waste detection and right-sizing
-- **Security Scanning** - ML-powered anomaly detection
-- **Predictive Analytics** - 7-day workload forecasting
-
 ---
 
 ## Features
@@ -454,19 +446,6 @@ GET  /api/postmortem/history
 
 **Full API docs available at:** `http://localhost:8000/docs` (Swagger UI)
 
----
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
 
 ## License
 
@@ -481,36 +460,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - LinkedIn: [linkedin.com/in/abhirnaik](https://linkedin.com/in/abhirnaik)
 - GitHub: [@Beer146](https://github.com/Beer146)
 - Email: naik.ab@northeastern.edu
-
----
-
-## Acknowledgments
-
-- **AWS** for comprehensive cloud services and documentation
-- **Anthropic** for Claude API and excellent LLM capabilities
-- **TensorFlow** team for powerful ML framework
-- **FastAPI** and **React** communities for excellent frameworks
-
----
-
-## Project Stats
-
-- **Development Time:** 13+ hours
-- **Lines of Code:** ~5,000+
-- **Services:** 4 integrated
-- **ML Models:** 4 (Random Forest, Isolation Forest, LSTM, Claude)
-- **API Endpoints:** 12+
-- **Database Tables:** 5
-- **AWS Services Used:** EC2, EBS, RDS, ELB, CloudWatch, CloudWatch Logs
-
----
-
-<div align="center">
-
-**Built with care by Abhir Naik**
-
-*Empowering organizations to optimize cloud costs through intelligent automation*
-
-[Star this repo](https://github.com/yourusername/cloudsense-platform) | [Report Bug](https://github.com/yourusername/cloudsense-platform/issues) | [Request Feature](https://github.com/yourusername/cloudsense-platform/issues)
 
 </div>
