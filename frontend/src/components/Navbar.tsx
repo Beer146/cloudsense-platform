@@ -1,3 +1,4 @@
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 import './Navbar.css'
 
 interface NavbarProps {
@@ -29,6 +30,17 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
           >
             Insights
           </button>
+          
+          <div className="auth-section">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="sign-in-btn">Sign In</button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
+          </div>
         </div>
       </div>
     </nav>

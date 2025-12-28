@@ -1,16 +1,17 @@
 """
 Post-Mortem Generator API Endpoints
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 import sys
 from pathlib import Path
 import traceback
 
-# Add services to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from services.postmortem_service import PostMortemService
+from services.postmortem_service_enhanced import EnhancedPostMortemService
+from auth.clerk_auth import get_current_user
+from auth.user_service import get_or_create_user
 
 router = APIRouter(prefix="/api/postmortem", tags=["PostMortem"])
 
@@ -21,17 +22,24 @@ class AnalyzeRequest(BaseModel):
 
 
 @router.post("/analyze")
-async def analyze_logs(request: AnalyzeRequest = None):
+async def analyze_logs(
+    request: AnalyzeRequest = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Analyze CloudWatch Logs and generate post-mortem report
     """
     try:
-        service = PostMortemService()
+        user = get_or_create_user(
+            clerk_user_id=current_user["user_id"],
+            email=current_user.get("email")
+        )
         
-        regions = request.regions if request else None
+        service = EnhancedPostMortemService()
+        
         lookback_hours = request.lookback_hours if request else 24
         
-        results = await service.analyze(regions=regions, lookback_hours=lookback_hours)
+        results = await service.analyze(lookback_hours=lookback_hours, user_id=user.id)
         return results
     except Exception as e:
         print(f"\n{'='*80}")
@@ -49,5 +57,5 @@ async def get_status():
     """
     return {
         "status": "ready",
-        "service": "Post-Mortem Generator"
+        "service": "Post-Mortem Generator with LLM"
     }

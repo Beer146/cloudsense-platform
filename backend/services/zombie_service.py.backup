@@ -98,7 +98,7 @@ class ZombieService:
         
         return active_resources
     
-    def _save_to_database(self, scan_regions, zombies_data, duration, user_id):
+    def _save_to_database(self, scan_regions, zombies_data, duration):
         """Save zombie scan results to database"""
         from models.database import SessionLocal
         db = SessionLocal()
@@ -107,7 +107,6 @@ class ZombieService:
             total_cost = sum(z.get('monthly_cost', 0) for z in zombies_data)
             
             scan = Scan(
-                user_id=user_id,
                 scan_type='zombie',
                 status='success',
                 regions=scan_regions,
@@ -147,7 +146,7 @@ class ZombieService:
         finally:
             db.close()
     
-    async def scan(self, regions: list = None, user_id: int = None):
+    async def scan(self, regions: list = None):
         """Run zombie resource scan with ML predictions"""
         start_time = time.time()
         
@@ -189,7 +188,7 @@ class ZombieService:
             duration = time.time() - start_time
             
             # Save to database
-            scan_id = self._save_to_database(scan_regions, all_zombies, duration, user_id)
+            scan_id = self._save_to_database(scan_regions, all_zombies, duration)
             
             # Calculate totals
             total_cost = sum(z.get('monthly_cost', 0) for z in all_zombies)

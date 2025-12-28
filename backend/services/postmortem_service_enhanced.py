@@ -129,11 +129,12 @@ class EnhancedPostMortemService:
         
         return pattern[:200]  # Limit length
     
-    def _save_to_database(self, regions: List[str], summary: Dict, duration: float) -> int:
+    def _save_to_database(self, regions: List[str], summary: Dict, duration: float, user_id: int) -> int:
         """Save post-mortem scan to database"""
         db = SessionLocal()
         try:
             scan = Scan(
+                user_id=user_id,
                 scan_type='postmortem',
                 status='success',
                 regions=regions,
@@ -155,7 +156,7 @@ class EnhancedPostMortemService:
         finally:
             db.close()
     
-    async def analyze(self, lookback_hours: int = 24, use_llm: bool = True):
+    async def analyze(self, lookback_hours: int = 24, use_llm: bool = True, user_id: int = None):
         """
         Analyze CloudWatch Logs for incidents with optional LLM enhancement
         
@@ -221,7 +222,7 @@ class EnhancedPostMortemService:
         
         # Save to database
         duration = time.time() - start_time
-        scan_id = self._save_to_database(self.regions, summary, duration)
+        scan_id = self._save_to_database(self.regions, summary, duration, user_id)
         
         print(f"\n✅ Post-Mortem Analysis Complete!")
         print(f"   Total errors found: {summary['total_errors']}")

@@ -67,3 +67,26 @@
   border-color: #646cff;
   font-weight: 600;
 }
+
+.auth-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sign-in-btn {
+  background: #646cff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.sign-in-btn:hover {
+  background: #535bf2;
+}

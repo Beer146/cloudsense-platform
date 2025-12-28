@@ -111,13 +111,14 @@ class EnhancedComplianceService:
         
         return all_violations
     
-    def _save_to_database(self, scan_regions, violations_data, duration):
+    def _save_to_database(self, scan_regions, violations_data, duration, user_id):
         """Save compliance scan results to database"""
         from models.database import SessionLocal
         db = SessionLocal()
         
         try:
             scan = Scan(
+                user_id=user_id,
                 scan_type='compliance',
                 status='success',
                 regions=scan_regions,
@@ -174,7 +175,7 @@ class EnhancedComplianceService:
         
         return all_instances
     
-    async def scan(self, regions: list = None, train_baseline: bool = False):
+    async def scan(self, regions: list = None, train_baseline: bool = False, user_id: int = None):
         """
         Run compliance scan with ML-powered anomaly detection
         """
@@ -252,7 +253,7 @@ class EnhancedComplianceService:
                 vtype = violation.get('resource_type', 'unknown')
                 by_type[vtype] = by_type.get(vtype, 0) + 1
             
-            scan_id = self._save_to_database(scan_regions, all_violations, duration)
+            scan_id = self._save_to_database(scan_regions, all_violations, duration, user_id)
             
             print(f"\n✅ Compliance scan complete!")
             print(f"   Traditional violations: {len(rule_violations)}")

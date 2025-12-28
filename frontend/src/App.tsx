@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 import Navbar from './components/Navbar'
 import History from './pages/History'
 import Insights from './pages/Insights'
@@ -94,6 +95,7 @@ interface PostMortemResults {
 }
 
 function App() {
+  const { getToken } = useAuth()
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'history' | 'insights'>('dashboard')
   const [zombieResults, setZombieResults] = useState<ZombieResults | null>(null)
   const [rightSizingResults, setRightSizingResults] = useState<RightSizingResults | null>(null)
@@ -104,116 +106,136 @@ function App() {
   const [resolvingViolation, setResolvingViolation] = useState<number | null>(null)
 
   const runZombieScan = async () => {
-    setLoading({ ...loading, zombie: true })
-    try {
-      const response = await fetch('http://localhost:8000/api/zombie/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
-      const data = await response.json()
-      setZombieResults(data)
-    } catch (error) {
-      console.error('Zombie scan failed:', error)
-      setZombieResults({ status: 'error' })
-    } finally {
-      setLoading({ ...loading, zombie: false })
-    }
+  setLoading({ ...loading, zombie: true })
+  try {
+    const token = await getToken()
+    const response = await fetch('http://localhost:8000/api/zombie/scan', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({})
+    })
+    const data = await response.json()
+    setZombieResults(data)
+  } catch (error) {
+    console.error('Zombie scan failed:', error)
+    setZombieResults({ status: 'error' })
+  } finally {
+    setLoading({ ...loading, zombie: false })
   }
+}
 
-  const runRightSizing = async () => {
-    setLoading({ ...loading, rightsizing: true })
-    try {
-      const response = await fetch('http://localhost:8000/api/rightsizing/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
-      const data = await response.json()
-      setRightSizingResults(data)
-    } catch (error) {
-      console.error('Right-sizing analysis failed:', error)
-      setRightSizingResults({ status: 'error' })
-    } finally {
-      setLoading({ ...loading, rightsizing: false })
-    }
+const runRightSizing = async () => {
+  setLoading({ ...loading, rightsizing: true })
+  try {
+    const token = await getToken()
+    const response = await fetch('http://localhost:8000/api/rightsizing/analyze', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({})
+    })
+    const data = await response.json()
+    setRightSizingResults(data)
+  } catch (error) {
+    console.error('Right-sizing analysis failed:', error)
+    setRightSizingResults({ status: 'error' })
+  } finally {
+    setLoading({ ...loading, rightsizing: false })
   }
+}
 
-  const runComplianceScan = async () => {
-    setLoading({ ...loading, compliance: true })
-    setShowViolations(false)
-    try {
-      const response = await fetch('http://localhost:8000/api/compliance/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
-      const data = await response.json()
-      setComplianceResults(data)
-    } catch (error) {
-      console.error('Compliance scan failed:', error)
-      setComplianceResults({ status: 'error' })
-    } finally {
-      setLoading({ ...loading, compliance: false })
-    }
+const runComplianceScan = async () => {
+  setLoading({ ...loading, compliance: true })
+  setShowViolations(false)
+  try {
+    const token = await getToken()
+    const response = await fetch('http://localhost:8000/api/compliance/scan', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({})
+    })
+    const data = await response.json()
+    setComplianceResults(data)
+  } catch (error) {
+    console.error('Compliance scan failed:', error)
+    setComplianceResults({ status: 'error' })
+  } finally {
+    setLoading({ ...loading, compliance: false })
   }
+}
 
-  const runPostMortemAnalysis = async () => {
-    setLoading({ ...loading, postmortem: true })
-    try {
-      const response = await fetch('http://localhost:8000/api/postmortem/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lookback_hours: 24 })
-      })
-      const data = await response.json()
-      setPostMortemResults(data)
-    } catch (error) {
-      console.error('Post-mortem analysis failed:', error)
-      setPostMortemResults({ status: 'error' })
-    } finally {
-      setLoading({ ...loading, postmortem: false })
-    }
+const runPostMortemAnalysis = async () => {
+  setLoading({ ...loading, postmortem: true })
+  try {
+    const token = await getToken()
+    const response = await fetch('http://localhost:8000/api/postmortem/analyze', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ lookback_hours: 24 })
+    })
+    const data = await response.json()
+    setPostMortemResults(data)
+  } catch (error) {
+    console.error('Post-mortem analysis failed:', error)
+    setPostMortemResults({ status: 'error' })
+  } finally {
+    setLoading({ ...loading, postmortem: false })
   }
+}
 
-  const markViolationResolved = async (violationId: number, index: number) => {
-    if (!complianceResults || !complianceResults.violations) return
+const markViolationResolved = async (violationId: number, index: number) => {
+  if (!complianceResults || !complianceResults.violations) return
+  
+  const note = prompt('Add a note about how you fixed this (optional):')
+  
+  setResolvingViolation(violationId)
+  try {
+    const token = await getToken()
+    const response = await fetch(`http://localhost:8000/api/resolutions/compliance/${violationId}/resolve`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ note: note || undefined })
+    })
     
-    const note = prompt('Add a note about how you fixed this (optional):')
-    
-    setResolvingViolation(violationId)
-    try {
-      const response = await fetch(`http://localhost:8000/api/resolutions/compliance/${violationId}/resolve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: note || undefined })
+    if (response.ok) {
+      const updatedViolations = [...complianceResults.violations]
+      updatedViolations[index] = {
+        ...updatedViolations[index],
+        resolved: true,
+        resolved_at: new Date().toISOString(),
+        resolved_note: note || undefined
+      }
+      
+      setComplianceResults({
+        ...complianceResults,
+        violations: updatedViolations
       })
       
-      if (response.ok) {
-        const updatedViolations = [...complianceResults.violations]
-        updatedViolations[index] = {
-          ...updatedViolations[index],
-          resolved: true,
-          resolved_at: new Date().toISOString(),
-          resolved_note: note || undefined
-        }
-        
-        setComplianceResults({
-          ...complianceResults,
-          violations: updatedViolations
-        })
-        
-        alert('✅ Violation marked as resolved!')
-      } else {
-        alert('Failed to mark violation as resolved')
-      }
-    } catch (error) {
-      console.error('Failed to resolve violation:', error)
-      alert('Error marking violation as resolved')
-    } finally {
-      setResolvingViolation(null)
+      alert('✅ Violation marked as resolved!')
+    } else {
+      alert('Failed to mark violation as resolved')
     }
+  } catch (error) {
+    console.error('Failed to resolve violation:', error)
+    alert('Error marking violation as resolved')
+  } finally {
+    setResolvingViolation(null)
   }
+}
 
   const getSeverityColor = (severity: string) => {
     switch(severity) {

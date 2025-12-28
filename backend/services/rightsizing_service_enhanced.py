@@ -190,11 +190,12 @@ class EnhancedRightSizingService:
                 'details': f'Trend: {trend}, Seasonality: {analysis["seasonality"]}'
             }
     
-    def _save_to_database(self, regions: list, results: dict, duration: float) -> int:
+    def _save_to_database(self, regions: list, results: dict, duration: float, user_id: int) -> int:
         """Save analysis to database"""
         db = SessionLocal()
         try:
             scan = Scan(
+                user_id=user_id,
                 scan_type='rightsizing',
                 status='success',
                 regions=regions,
@@ -216,7 +217,7 @@ class EnhancedRightSizingService:
         finally:
             db.close()
     
-    async def analyze(self, regions: list = None, use_lstm: bool = True):
+    async def analyze(self, regions: list = None, use_lstm: bool = True, user_id: int = None):
         """
         Analyze EC2 instances with optional LSTM forecasting
         
@@ -261,7 +262,7 @@ class EnhancedRightSizingService:
             'lstm_enhanced_count': 0,
             'total_monthly_savings': 0
         }
-        scan_id = self._save_to_database(scan_regions, results, duration)
+        scan_id = self._save_to_database(scan_regions, results, duration, user_id)
         
         if not all_instances:
             print("ℹ️ No running instances found")
@@ -317,7 +318,7 @@ class EnhancedRightSizingService:
             'lstm_enhanced_count': len(lstm_analyses),
             'total_monthly_savings': 0
         }
-        scan_id = self._save_to_database(scan_regions, results, duration)
+        scan_id = self._save_to_database(scan_regions, results, duration, user_id)
         
         print(f"\n✅ Right-Sizing Analysis Complete!")
         print(f"   Instances analyzed: {len(all_instances)}")
