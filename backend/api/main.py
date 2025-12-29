@@ -7,6 +7,7 @@ from history import router as history_router
 from insights import router as insights_router
 from resolutions import router as resolutions_router
 from postmortem_api import router as postmortem_router
+from test_redaction_endpoint import router as test_router
 
 app = FastAPI(
     title="CloudSense API",
@@ -31,6 +32,7 @@ app.include_router(history_router)
 app.include_router(insights_router)
 app.include_router(resolutions_router)
 app.include_router(postmortem_router)
+app.include_router(test_router)
 
 @app.get("/")
 async def root():

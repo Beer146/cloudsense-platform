@@ -1,33 +1,41 @@
 """
-LLM-Powered Post-Mortem Analysis using Claude API
-Intelligent log analysis, root cause detection, and actionable recommendations
+LLM-powered Post-Mortem Analysis using Claude API
+WITH PII/SECRETS REDACTION
 """
 import os
-from anthropic import Anthropic
-from datetime import datetime
-from typing import List, Dict, Any
 import json
 import re
-from pathlib import Path
-
-# Load environment variables
+from typing import List, Dict, Any
+from anthropic import Anthropic
 from dotenv import load_dotenv
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+from services.security.redaction_service import RedactionService
+
+load_dotenv()
 
 
 class LLMPostMortemAnalyzer:
+    """Uses Claude to analyze CloudWatch logs and provide intelligent post-mortem insights"""
+    
     def __init__(self):
         api_key = os.getenv('ANTHROPIC_API_KEY')
         if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment variables. Please add it to backend/.env")
+            raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
         
         self.client = Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-20250514"
+        
+        # Initialize redaction service
+        # redact_ips=False keeps IPs for debugging (they're useful for infrastructure logs)
+        self.redactor = RedactionService(redact_ips=False)
+        
+        print("✅ LLM Post-Mortem Analyzer enabled")
+        print(f"   Model: {self.model}")
+        print(f"   🔒 PII/Secrets redaction: ENABLED")
     
     def analyze_logs(self, error_patterns: List[Dict], log_summary: Dict) -> Dict[str, Any]:
         """
         Use Claude to analyze logs and provide intelligent insights
+        WITH AUTOMATIC PII/SECRETS REDACTION
         
         Args:
             error_patterns: List of grouped error patterns from traditional analysis
@@ -39,19 +47,32 @@ class LLMPostMortemAnalyzer:
                 'root_causes': List[Dict],
                 'recommendations': List[Dict],
                 'severity_assessment': str,
-                'affected_services': List[str]
+                'affected_services': List[str],
+                'redaction_stats': Dict[str, int]  # NEW: Shows what was redacted
             }
         """
-        print("\n🤖 Sending logs to Claude API for intelligent analysis...")
+        print("\n🤖 Preparing logs for Claude API analysis...")
         
-        # Prepare context for Claude
-        context = self._prepare_context(error_patterns, log_summary)
+        # SECURITY: Redact sensitive data from error patterns BEFORE sending to Claude
+        redacted_patterns, redaction_stats = self._redact_error_patterns(error_patterns)
+        
+        if redaction_stats:
+            print(f"   🔒 Redacted {sum(redaction_stats.values())} sensitive items:")
+            for redaction_type, count in redaction_stats.items():
+                print(f"      - {redaction_type}: {count}")
+        else:
+            print(f"   ✅ No sensitive data detected in logs")
+        
+        # Prepare context for Claude (now with redacted data)
+        context = self._prepare_context(redacted_patterns, log_summary)
         
         # Build prompt
         prompt = self._build_analysis_prompt(context)
         
         try:
-            # Call Claude API
+            print("   📤 Sending to Claude API...")
+            
+            # Call Claude API (data is already redacted)
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=2000,
@@ -73,6 +94,9 @@ class LLMPostMortemAnalyzer:
             # Claude will return structured JSON
             analysis = json.loads(response_text)
             
+            # Add redaction stats to response for transparency
+            analysis['redaction_stats'] = redaction_stats
+            
             print(f"✅ Claude analysis complete!")
             print(f"   Root causes identified: {len(analysis.get('root_causes', []))}")
             print(f"   Recommendations: {len(analysis.get('recommendations', []))}")
@@ -88,7 +112,8 @@ class LLMPostMortemAnalyzer:
                 'root_causes': [],
                 'recommendations': [],
                 'severity_assessment': 'UNKNOWN',
-                'affected_services': []
+                'affected_services': [],
+                'redaction_stats': redaction_stats
             }
         except Exception as e:
             print(f"❌ Claude API error: {e}")
@@ -97,8 +122,60 @@ class LLMPostMortemAnalyzer:
                 'root_causes': [],
                 'recommendations': [],
                 'severity_assessment': 'ERROR',
-                'affected_services': []
+                'affected_services': [],
+                'redaction_stats': redaction_stats
             }
+    
+    def _redact_error_patterns(self, error_patterns: List[Dict]) -> tuple[List[Dict], Dict[str, int]]:
+        """
+        Redact sensitive information from error patterns
+        
+        Args:
+            error_patterns: Raw error patterns that may contain PII/secrets
+            
+        Returns:
+            Tuple of (redacted_patterns, redaction_stats)
+        """
+        redacted_patterns = []
+        total_stats = {}
+        
+        for pattern in error_patterns:
+            redacted_pattern = pattern.copy()
+            
+            # Redact the error pattern text
+            if 'pattern' in pattern:
+                redacted_text, stats = self.redactor.redact(pattern['pattern'])
+                redacted_pattern['pattern'] = redacted_text
+                
+                # Merge stats
+                for key, count in stats.items():
+                    total_stats[key] = total_stats.get(key, 0) + count
+            
+            # Redact example log messages
+            if 'example' in pattern:
+                redacted_example, stats = self.redactor.redact(pattern['example'])
+                redacted_pattern['example'] = redacted_example
+                
+                # Merge stats
+                for key, count in stats.items():
+                    total_stats[key] = total_stats.get(key, 0) + count
+            
+            # Redact any log samples
+            if 'logs' in pattern and isinstance(pattern['logs'], list):
+                redacted_logs = []
+                for log in pattern['logs']:
+                    redacted_log, stats = self.redactor.redact(log)
+                    redacted_logs.append(redacted_log)
+                    
+                    # Merge stats
+                    for key, count in stats.items():
+                        total_stats[key] = total_stats.get(key, 0) + count
+                
+                redacted_pattern['logs'] = redacted_logs
+            
+            redacted_patterns.append(redacted_pattern)
+        
+        return redacted_patterns, total_stats
     
     def _clean_json_response(self, text: str) -> str:
         """Remove markdown code blocks and clean JSON response"""
@@ -109,7 +186,10 @@ class LLMPostMortemAnalyzer:
         return text
     
     def _prepare_context(self, error_patterns: List[Dict], log_summary: Dict) -> Dict:
-        """Prepare log data for Claude"""
+        """
+        Prepare log data for Claude
+        Note: error_patterns should already be redacted at this point
+        """
         return {
             'total_errors': log_summary.get('total_errors', 0),
             'total_warnings': log_summary.get('total_warnings', 0),
@@ -129,6 +209,8 @@ class LLMPostMortemAnalyzer:
         
         prompt = f"""You are an AWS infrastructure expert analyzing CloudWatch logs for a post-mortem incident report.
 
+**IMPORTANT:** Some sensitive data has been redacted (e.g., [REDACTED_PASSWORD], [REDACTED_API_KEY]). Focus your analysis on the error patterns and infrastructure issues, not the redacted values.
+
 **Log Summary:**
 - Timeframe: Last {context['timeframe']}
 - Total Errors: {context['total_errors']}
@@ -146,78 +228,34 @@ Analyze these logs and provide a comprehensive post-mortem report in **valid JSO
   "root_causes": [
     {{
       "title": "Brief title of root cause",
-      "description": "Detailed explanation",
-      "evidence": "What in the logs supports this",
-      "impact": "HIGH/MEDIUM/LOW",
+      "description": "Detailed explanation of what went wrong",
+      "evidence": "What in the logs supports this conclusion",
+      "impact": "Business impact of this issue",
       "affected_services": ["service1", "service2"]
     }}
   ],
   "recommendations": [
     {{
-      "priority": "CRITICAL/HIGH/MEDIUM/LOW",
-      "title": "Actionable recommendation title",
-      "description": "Detailed steps to fix",
-      "aws_service": "Relevant AWS service",
-      "documentation_link": "Link to AWS docs if applicable"
+      "priority": "CRITICAL|HIGH|MEDIUM|LOW",
+      "title": "Recommendation title",
+      "description": "Detailed remediation steps",
+      "aws_service": "AWS service name",
+      "documentation_link": "https://docs.aws.amazon.com/..."
     }}
   ],
-  "severity_assessment": "CRITICAL/HIGH/MEDIUM/LOW",
+  "severity_assessment": "CRITICAL|HIGH|MEDIUM|LOW",
   "affected_services": ["list", "of", "services"],
-  "preventive_measures": [
-    "Future prevention step 1",
-    "Future prevention step 2"
-  ]
+  "preventive_measures": ["Future prevention step 1", "Step 2"]
 }}
 
-**Important:**
-- Focus on AWS-specific insights (Lambda, EC2, RDS, etc.)
-- Provide actionable recommendations with specific AWS service references
-- Include AWS documentation links where relevant
-- Identify patterns that might indicate larger systemic issues
-- Consider cost implications if relevant
+**Requirements:**
+1. Be specific with AWS service names and exact error types
+2. Provide actionable recommendations with AWS CLI commands or console steps
+3. Include valid AWS documentation links
+4. Prioritize recommendations by severity
+5. Do NOT speculate about redacted values - work with what's visible
+6. Focus on infrastructure root causes, not just symptoms
 
-Return ONLY the JSON object, no markdown code blocks, no additional text."""
-
+Return ONLY the JSON, no additional text."""
+        
         return prompt
-    
-    def generate_executive_summary(self, analysis: Dict) -> str:
-        """Generate a concise executive summary from analysis"""
-        if 'executive_summary' in analysis:
-            return analysis['executive_summary']
-        
-        # Fallback if no summary provided
-        severity = analysis.get('severity_assessment', 'UNKNOWN')
-        root_causes = len(analysis.get('root_causes', []))
-        
-        return f"{severity} severity incident detected. {root_causes} root causes identified. Immediate action recommended."
-
-
-if __name__ == "__main__":
-    # Test the analyzer
-    print("🧪 Testing Claude API connection...")
-    
-    analyzer = LLMPostMortemAnalyzer()
-    print("✅ API key loaded successfully!")
-    
-    test_patterns = [
-        {
-            'pattern': 'Lambda timeout exceeded',
-            'count': 15,
-            'example': '2024-12-20 10:30:15 ERROR Task timed out after 30.00 seconds'
-        },
-        {
-            'pattern': 'DynamoDB ProvisionedThroughputExceededException',
-            'count': 8,
-            'example': '2024-12-20 10:31:22 ERROR Rate exceeded for table users'
-        }
-    ]
-    
-    test_summary = {
-        'total_errors': 23,
-        'total_warnings': 5,
-        'lookback_hours': 24
-    }
-    
-    result = analyzer.analyze_logs(test_patterns, test_summary)
-    print("\n📋 Analysis Result:")
-    print(json.dumps(result, indent=2))

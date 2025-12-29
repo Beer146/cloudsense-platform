@@ -1,0 +1,9 @@
+--- App.tsx.old
++++ App.tsx.new
+@@ -88,6 +88,7 @@
+     severity_assessment?: string
+     affected_services?: string[]
+     preventive_measures?: string[]
++    redaction_stats?: Record<string, number>
+   }
+ }

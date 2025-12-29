@@ -91,6 +91,7 @@ interface PostMortemResults {
     severity_assessment?: string
     affected_services?: string[]
     preventive_measures?: string[]
+    redaction_stats?: Record<string, number>
   }
 }
 
@@ -106,136 +107,138 @@ function App() {
   const [resolvingViolation, setResolvingViolation] = useState<number | null>(null)
 
   const runZombieScan = async () => {
-  setLoading({ ...loading, zombie: true })
-  try {
-    const token = await getToken()
-    const response = await fetch('http://localhost:8000/api/zombie/scan', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({})
-    })
-    const data = await response.json()
-    setZombieResults(data)
-  } catch (error) {
-    console.error('Zombie scan failed:', error)
-    setZombieResults({ status: 'error' })
-  } finally {
-    setLoading({ ...loading, zombie: false })
+    setLoading({ ...loading, zombie: true })
+    try {
+      const token = await getToken()
+      const response = await fetch('http://localhost:8000/api/zombie/scan', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({})
+      })
+      const data = await response.json()
+      setZombieResults(data)
+    } catch (error) {
+      console.error('Zombie scan failed:', error)
+      setZombieResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, zombie: false })
+    }
   }
-}
 
-const runRightSizing = async () => {
-  setLoading({ ...loading, rightsizing: true })
-  try {
-    const token = await getToken()
-    const response = await fetch('http://localhost:8000/api/rightsizing/analyze', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({})
-    })
-    const data = await response.json()
-    setRightSizingResults(data)
-  } catch (error) {
-    console.error('Right-sizing analysis failed:', error)
-    setRightSizingResults({ status: 'error' })
-  } finally {
-    setLoading({ ...loading, rightsizing: false })
+  const runRightSizing = async () => {
+    setLoading({ ...loading, rightsizing: true })
+    try {
+      const token = await getToken()
+      const response = await fetch('http://localhost:8000/api/rightsizing/analyze', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({})
+      })
+      const data = await response.json()
+      setRightSizingResults(data)
+    } catch (error) {
+      console.error('Right-sizing analysis failed:', error)
+      setRightSizingResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, rightsizing: false })
+    }
   }
-}
 
-const runComplianceScan = async () => {
-  setLoading({ ...loading, compliance: true })
-  setShowViolations(false)
-  try {
-    const token = await getToken()
-    const response = await fetch('http://localhost:8000/api/compliance/scan', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({})
-    })
-    const data = await response.json()
-    setComplianceResults(data)
-  } catch (error) {
-    console.error('Compliance scan failed:', error)
-    setComplianceResults({ status: 'error' })
-  } finally {
-    setLoading({ ...loading, compliance: false })
+  const runComplianceScan = async () => {
+    setLoading({ ...loading, compliance: true })
+    setShowViolations(false)
+    try {
+      const token = await getToken()
+      const response = await fetch('http://localhost:8000/api/compliance/scan', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({})
+      })
+      const data = await response.json()
+      setComplianceResults(data)
+    } catch (error) {
+      console.error('Compliance scan failed:', error)
+      setComplianceResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, compliance: false })
+    }
   }
-}
 
-const runPostMortemAnalysis = async () => {
-  setLoading({ ...loading, postmortem: true })
-  try {
-    const token = await getToken()
-    const response = await fetch('http://localhost:8000/api/postmortem/analyze', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ lookback_hours: 24 })
-    })
-    const data = await response.json()
-    setPostMortemResults(data)
-  } catch (error) {
-    console.error('Post-mortem analysis failed:', error)
-    setPostMortemResults({ status: 'error' })
-  } finally {
-    setLoading({ ...loading, postmortem: false })
+  const runPostMortemAnalysis = async () => {
+    setLoading({ ...loading, postmortem: true })
+    try {
+      const token = await getToken()
+      const response = await fetch('http://localhost:8000/api/postmortem/analyze', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ lookback_hours: 24 })
+      })
+      const data = await response.json()
+      setPostMortemResults(data)
+    } catch (error) {
+      console.error('Post-mortem analysis failed:', error)
+      setPostMortemResults({ status: 'error' })
+    } finally {
+      setLoading({ ...loading, postmortem: false })
+    }
   }
-}
 
-const markViolationResolved = async (violationId: number, index: number) => {
-  if (!complianceResults || !complianceResults.violations) return
-  
-  const note = prompt('Add a note about how you fixed this (optional):')
-  
-  setResolvingViolation(violationId)
-  try {
-    const token = await getToken()
-    const response = await fetch(`http://localhost:8000/api/resolutions/compliance/${violationId}/resolve`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ note: note || undefined })
-    })
+  const markViolationResolved = async (violationId: number, index: number) => {
+    if (!complianceResults || !complianceResults.violations) return
     
-    if (response.ok) {
-      const updatedViolations = [...complianceResults.violations]
-      updatedViolations[index] = {
-        ...updatedViolations[index],
-        resolved: true,
-        resolved_at: new Date().toISOString(),
-        resolved_note: note || undefined
-      }
-      
-      setComplianceResults({
-        ...complianceResults,
-        violations: updatedViolations
+    const note = prompt('Add a note about how you fixed this (optional):')
+    
+    setResolvingViolation(violationId)
+    try {
+      const token = await getToken()
+      const response = await fetch(`http://localhost:8000/api/resolutions/compliance/${violationId}/resolve`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ note: note || undefined })
       })
       
-      alert('✅ Violation marked as resolved!')
-    } else {
-      alert('Failed to mark violation as resolved')
+      if (response.ok) {
+        const updatedViolations = [...complianceResults.violations]
+        updatedViolations[index] = {
+          ...updatedViolations[index],
+          resolved: true,
+          resolved_at: new Date().toISOString(),
+          resolved_note: note || undefined
+        }
+        
+        setComplianceResults({
+          ...complianceResults,
+          violations: updatedViolations
+        })
+        
+        alert('✅ Violation marked as resolved!')
+      } else {
+        alert('Failed to mark violation as resolved')
+      }
+    } catch (error) {
+      console.error('Failed to resolve violation:', error)
+      alert('Error marking violation as resolved')
+    } finally {
+      setResolvingViolation(null)
     }
-  } catch (error) {
-    console.error('Failed to resolve violation:', error)
-    alert('Error marking violation as resolved')
-  } finally {
-    setResolvingViolation(null)
   }
-}
+
+  
 
   const getSeverityColor = (severity: string) => {
     switch(severity) {
@@ -482,6 +485,24 @@ const markViolationResolved = async (violationId: number, index: number) => {
                           <p style={{color: '#646cff', fontWeight: 'bold', marginBottom: '1rem'}}>
                             🤖 AI-Powered Analysis
                           </p>
+                          
+                          {/* Security: Show what was redacted */}
+                          {postMortemResults.llm_analysis.redaction_stats && 
+                           Object.keys(postMortemResults.llm_analysis.redaction_stats).length > 0 && (
+                            <div style={{marginBottom: '1rem', padding: '0.75rem', background: 'rgba(76, 175, 80, 0.1)', borderRadius: '6px', borderLeft: '3px solid #4CAF50'}}>
+                              <strong style={{color: '#4CAF50'}}>🔒 Security:</strong> 
+                              <span style={{marginLeft: '0.5rem', fontSize: '0.9rem'}}>
+                                {Object.entries(postMortemResults.llm_analysis.redaction_stats).reduce((sum, [_, count]) => sum + count, 0)} sensitive items redacted
+                              </span>
+                              <div style={{fontSize: '0.85rem', marginTop: '0.5rem', color: '#888'}}>
+                                {Object.entries(postMortemResults.llm_analysis.redaction_stats).map(([type, count]) => (
+                                  <span key={type} style={{marginRight: '1rem'}}>
+                                    {type.replace(/_/g, ' ')}: {count}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           
                           {/* Executive Summary */}
                           {postMortemResults.llm_analysis.executive_summary && (
