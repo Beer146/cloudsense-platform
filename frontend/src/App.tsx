@@ -87,11 +87,23 @@ interface PostMortemResults {
       description: string
       aws_service: string
       documentation_link?: string
+      validation?: {
+        severity: string
+        warnings: string[]
+        requires_human_approval: boolean
+      }
     }>
     severity_assessment?: string
     affected_services?: string[]
     preventive_measures?: string[]
     redaction_stats?: Record<string, number>
+    validation_summary?: {
+      total_recommendations: number
+      total_root_causes: number
+      dangerous_operations: number
+      requires_review: number
+      all_warnings: string[]
+    }
   }
 }
 
@@ -504,6 +516,27 @@ function App() {
                             </div>
                           )}
                           
+                          {/* Validation Summary */}
+                          {postMortemResults.llm_analysis.validation_summary && 
+                           (postMortemResults.llm_analysis.validation_summary.dangerous_operations > 0 || 
+                            postMortemResults.llm_analysis.validation_summary.requires_review > 0) && (
+                            <div style={{marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255, 153, 0, 0.1)', borderRadius: '6px', borderLeft: '3px solid #FF9900'}}>
+                              <strong style={{color: '#FF9900'}}>⚠️ Validation Warnings:</strong>
+                              <div style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>
+                                {postMortemResults.llm_analysis.validation_summary.dangerous_operations > 0 && (
+                                  <div style={{color: '#D13212', fontWeight: 'bold', marginBottom: '0.25rem'}}>
+                                    🚨 {postMortemResults.llm_analysis.validation_summary.dangerous_operations} recommendation(s) flagged as DANGEROUS - require explicit approval
+                                  </div>
+                                )}
+                                {postMortemResults.llm_analysis.validation_summary.requires_review > 0 && (
+                                  <div style={{color: '#FF9900'}}>
+                                    ⚠️ {postMortemResults.llm_analysis.validation_summary.requires_review} recommendation(s) require human review
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Executive Summary */}
                           {postMortemResults.llm_analysis.executive_summary && (
                             <div style={{marginBottom: '1rem', padding: '1rem', background: 'rgba(100, 108, 255, 0.1)', borderRadius: '8px', borderLeft: '3px solid #646cff'}}>
@@ -564,6 +597,32 @@ function App() {
                                   }}>
                                     {rec.priority}
                                   </span>
+                                  {rec.validation && rec.validation.severity === 'DANGEROUS' && (
+                                    <span style={{
+                                      padding: '0.2rem 0.5rem',
+                                      borderRadius: '3px',
+                                      background: '#D13212',
+                                      color: 'white',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 'bold',
+                                      marginRight: '0.5rem'
+                                    }}>
+                                      🚨 APPROVAL REQUIRED
+                                    </span>
+                                  )}
+                                  {rec.validation && rec.validation.severity === 'REQUIRES_REVIEW' && (
+                                    <span style={{
+                                      padding: '0.2rem 0.5rem',
+                                      borderRadius: '3px',
+                                      background: '#FF9900',
+                                      color: 'white',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 'bold',
+                                      marginRight: '0.5rem'
+                                    }}>
+                                      ⚠️ REVIEW
+                                    </span>
+                                  )}
                                   <strong>{rec.title}</strong>
                                   {rec.documentation_link && (
                                     <a href={rec.documentation_link} target="_blank" rel="noopener noreferrer" style={{marginLeft: '0.5rem', color: '#646cff', fontSize: '0.85rem'}}>

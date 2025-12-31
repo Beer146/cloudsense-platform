@@ -1,5 +1,5 @@
 """
-Test endpoint to demonstrate redaction in action
+Test endpoint to demonstrate redaction AND validation in action
 """
 from fastapi import APIRouter
 from services.llm_postmortem_analyzer import LLMPostMortemAnalyzer
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/test", tags=["Test"])
 @router.get("/redaction-demo")
 async def redaction_demo():
     """
-    Demonstrate PII/Secrets redaction with mock data
+    Demonstrate PII/Secrets redaction AND LLM output validation with mock data
     """
     # Mock error patterns with sensitive data
     mock_patterns = [
@@ -37,7 +37,6 @@ async def redaction_demo():
     
     return {
         'status': 'success',
-        'message': 'Demo of PII/Secrets redaction',
-        'redaction_stats': result.get('redaction_stats', {}),
-        'analysis': result
+        'message': 'Demo of PII/Secrets redaction AND LLM validation',
+        'llm_analysis': result
     }
