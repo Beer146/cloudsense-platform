@@ -23,6 +23,35 @@ interface ZombieResults {
   }>
 }
 
+interface RightSizingResults {
+  status: string
+  scan_id?: number
+  message?: string
+  total_analyzed?: number
+  lstm_enhanced_count?: number
+  recommendations?: Array<{
+    instance_id: string
+    instance_type: string
+    region: string
+    recommendation: {
+      action: string
+      reason: string
+      confidence: string
+      ml_enhanced?: boolean
+      details?: string
+      lstm_analysis?: any
+    }
+  }>
+  total_monthly_savings?: number
+  regions_analyzed?: string[]
+  duration_seconds?: number
+  analysis_type?: string
+  ec2?: {
+    total: number
+    recommendations: any[]
+  }
+}
+
 interface Violation {
   id?: number
   resource_type: string
@@ -379,38 +408,39 @@ function App() {
                     <p className="info-message">ℹ️ {rightSizingResults.message}</p>
                   )}
                   
-                  <p><strong>EC2 Analyzed:</strong> {rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0}</p>
+                  <p><strong>EC2 Analyzed:</strong> {rightSizingResults.total_analyzed || 0}</p>
                   <p><strong>Potential Savings:</strong> ${rightSizingResults.total_monthly_savings?.toFixed(2)}/month</p>
                   <p><strong>Regions:</strong> {rightSizingResults.regions_analyzed?.join(', ')}</p>
                   
-                  {/* LSTM Enhancement Stats */}
                   {(rightSizingResults.lstm_enhanced_count !== undefined) && (
-                    <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
+                    <div className="breakdown" style={{marginTop: '1rem'}}>
                       <p style={{color: '#888'}}>📊 Traditional analysis: {(rightSizingResults.total_analyzed || 0) - (rightSizingResults.lstm_enhanced_count || 0)}</p>
                       <p style={{color: '#646cff'}}>🤖 LSTM-enhanced forecasts: {rightSizingResults.lstm_enhanced_count || 0}</p>
                       {rightSizingResults.lstm_enhanced_count > 0 && (
-                        <p style={{color: '#42d392', fontSize: '0.9rem', marginTop: '0.5rem'}}>
-                          ✅ Using neural networks for 7-day workload prediction
+                        <p style={{fontSize: '0.85rem', color: '#888', marginTop: '0.5rem'}}>
+                          Using neural networks to predict future workload patterns
                         </p>
                       )}
                     </div>
                   )}
-                  
+
                   <div className="breakdown">
-                    <p>Downsize: {rightSizingResults.recommendations?.ec2?.downsize_opportunities || 0}</p>
-                    <p>Family Switch: {rightSizingResults.recommendations?.ec2?.family_switches || 0}</p>
+                    <p>Recommendations: {rightSizingResults.recommendations?.length || 0}</p>
                   </div>
 
                   {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                   (rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0) === 0 && (
-                    <p className="info-message">💡 No running instances found.</p>
+                   (rightSizingResults.total_analyzed || 0) === 0 && (
+                    <p className="info-message">ℹ️ No instances found to analyze</p>
                   )}
 
                   {(rightSizingResults.total_monthly_savings || 0) === 0 && 
-                   (rightSizingResults.total_analyzed || rightSizingResults.recommendations?.ec2?.total_analyzed || 0) > 0 && (
-                    <p className="success-message">🎉 Already optimized!</p>
+                   (rightSizingResults.total_analyzed || 0) > 0 && (
+                    <p className="success-message">🎉 All instances are appropriately sized!</p>
                   )}
-                  
+
+                  {rightSizingResults.scan_id && (
+                    <p className="info-message">✅ Saved to history (ID: {rightSizingResults.scan_id})</p>
+                  )}
                   {rightSizingResults.scan_id && (
                     <p className="info-message">✅ Saved to history (ID: {rightSizingResults.scan_id})</p>
                   )}
