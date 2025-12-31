@@ -204,7 +204,7 @@ class EnhancedPostMortemService:
         llm_analysis = None
         if use_llm and self.llm_enabled and error_patterns:
             try:
-                llm_analysis = self.llm_analyzer.analyze_logs(error_patterns, summary)
+                llm_analysis = self.llm_analyzer.analyze_logs_with_rate_limiting(error_patterns, summary, user_id)
             except Exception as e:
                 print(f"⚠️ LLM analysis failed: {e}")
         

@@ -104,6 +104,19 @@ interface PostMortemResults {
       requires_review: number
       all_warnings: string[]
     }
+    usage_stats?: {
+      requests_last_hour: number
+      requests_last_day: number
+      total_input_tokens: number
+      total_output_tokens: number
+      total_cost_usd: number
+      today_cost_usd: number
+    }
+    rate_limit_exceeded?: boolean
+    rate_limit_reason?: string
+    cost_limit_exceeded?: boolean
+    cost_limit_reason?: string
+    fallback_mode?: string
   }
 }
 
@@ -533,6 +546,37 @@ function App() {
                                     ⚠️ {postMortemResults.llm_analysis.validation_summary.requires_review} recommendation(s) require human review
                                   </div>
                                 )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Rate Limit / Cost Limit Warning */}
+                          {(postMortemResults.llm_analysis.rate_limit_exceeded || postMortemResults.llm_analysis.cost_limit_exceeded) && (
+                            <div style={{marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255, 153, 0, 0.1)', borderRadius: '6px', borderLeft: '3px solid #FF9900'}}>
+                              <strong style={{color: '#FF9900'}}>⚠️ Rate Limit Reached</strong>
+                              <p style={{fontSize: '0.85rem', marginTop: '0.5rem', color: '#888'}}>
+                                {postMortemResults.llm_analysis.rate_limit_reason || postMortemResults.llm_analysis.cost_limit_reason}
+                              </p>
+                              <p style={{fontSize: '0.85rem', marginTop: '0.25rem', color: '#888'}}>
+                                Fallback: Using {postMortemResults.llm_analysis.fallback_mode} analysis
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* API Usage Stats */}
+                          {postMortemResults.llm_analysis.usage_stats && (
+                            <div style={{marginBottom: '1rem', padding: '0.75rem', background: 'rgba(100, 108, 255, 0.05)', borderRadius: '6px'}}>
+                              <strong style={{color: '#646cff', fontSize: '0.9rem'}}>📊 API Usage:</strong>
+                              <div style={{fontSize: '0.85rem', marginTop: '0.5rem', color: '#888'}}>
+                                <span style={{marginRight: '1rem'}}>
+                                  Requests: {postMortemResults.llm_analysis.usage_stats.requests_last_hour}/10 (hour)
+                                </span>
+                                <span style={{marginRight: '1rem'}}>
+                                  Cost: ${postMortemResults.llm_analysis.usage_stats.today_cost_usd.toFixed(4)}
+                                </span>
+                                <span>
+                                  Tokens: {postMortemResults.llm_analysis.usage_stats.total_input_tokens + postMortemResults.llm_analysis.usage_stats.total_output_tokens}
+                                </span>
                               </div>
                             </div>
                           )}

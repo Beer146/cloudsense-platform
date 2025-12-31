@@ -248,3 +248,77 @@ Analyze these logs and provide a comprehensive post-mortem report in **valid JSO
 Return ONLY the JSON, no additional text."""
         
         return prompt
+
+    def analyze_logs_with_rate_limiting(
+        self, 
+        error_patterns: List[Dict], 
+        log_summary: Dict,
+        user_id: int
+    ) -> Dict[str, Any]:
+        """
+        Analyze logs with rate limiting and cost controls
+        
+        Args:
+            error_patterns: Error patterns from logs
+            log_summary: Summary statistics
+            user_id: User ID for rate limiting
+            
+        Returns:
+            Analysis with rate limit info or fallback to rule-based
+        """
+        from services.security.rate_limiter import get_rate_limiter
+        
+        limiter = get_rate_limiter()
+        
+        # Check rate limits
+        rate_allowed, rate_reason = limiter.check_rate_limit(user_id)
+        if not rate_allowed:
+            print(f"   ⚠️ Rate limit exceeded: {rate_reason}")
+            return {
+                'executive_summary': 'Rate limit exceeded. Using rule-based analysis only.',
+                'root_causes': [],
+                'recommendations': [],
+                'severity_assessment': 'UNKNOWN',
+                'affected_services': [],
+                'rate_limit_exceeded': True,
+                'rate_limit_reason': rate_reason,
+                'fallback_mode': 'RULE_BASED'
+            }
+        
+        # Check cost limits
+        cost_allowed, cost_reason = limiter.check_cost_limit(user_id)
+        if not cost_allowed:
+            print(f"   ⚠️ Cost limit exceeded: {cost_reason}")
+            return {
+                'executive_summary': 'Daily cost limit exceeded. Using rule-based analysis only.',
+                'root_causes': [],
+                'recommendations': [],
+                'severity_assessment': 'UNKNOWN',
+                'affected_services': [],
+                'cost_limit_exceeded': True,
+                'cost_limit_reason': cost_reason,
+                'fallback_mode': 'RULE_BASED'
+            }
+        
+        # Proceed with LLM analysis
+        print(f"   ✅ Rate limits OK - proceeding with LLM analysis")
+        
+        result = self.analyze_logs(error_patterns, log_summary)
+        
+        # Estimate token usage (rough approximation)
+        # In production, get actual usage from Anthropic API response
+        estimated_input_tokens = len(str(error_patterns)) * 0.25  # ~4 chars per token
+        estimated_output_tokens = len(str(result)) * 0.25
+        
+        # Record usage
+        limiter.record_request(
+            user_id,
+            input_tokens=int(estimated_input_tokens),
+            output_tokens=int(estimated_output_tokens)
+        )
+        
+        # Add usage stats to response
+        stats = limiter.get_user_stats(user_id)
+        result['usage_stats'] = stats
+        
+        return result
