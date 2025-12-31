@@ -14,17 +14,13 @@ interface ZombieResults {
   zombies_found?: any
   at_risk_resources?: any[]
   at_risk_count?: number
-}
-
-interface RightSizingResults {
-  status: string
-  scan_id?: number
-  regions_analyzed?: string[]
-  total_monthly_savings?: number
-  recommendations?: any
-  message?: string
-  total_analyzed?: number
-  lstm_enhanced_count?: number
+  protected_resources?: Array<{
+    resource_id: string
+    resource_name: string
+    type: string
+    monthly_cost: number
+    protection_reason: string
+  }>
 }
 
 interface Violation {
@@ -341,6 +337,17 @@ function App() {
                     <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
                       <p style={{color: '#ffa500', fontWeight: 'bold'}}>
                         🤖 ML Prediction: {zombieResults.at_risk_count} running resource{zombieResults.at_risk_count > 1 ? 's' : ''} at HIGH RISK of becoming zombie
+                      </p>
+                    </div>
+                  )}
+
+                  {zombieResults.protected_resources && zombieResults.protected_resources.length > 0 && (
+                    <div className="breakdown" style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #333'}}>
+                      <p style={{color: '#42d392', fontWeight: 'bold'}}>
+                        🛡️ {zombieResults.protected_resources.length} resource{zombieResults.protected_resources.length > 1 ? 's' : ''} protected from zombie detection
+                      </p>
+                      <p style={{fontSize: '0.85rem', color: '#888', marginTop: '0.5rem'}}>
+                        These resources were excluded due to protection rules (production tags, critical services, etc.)
                       </p>
                     </div>
                   )}

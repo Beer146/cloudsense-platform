@@ -2,6 +2,7 @@
 Zombie Resource Detection Service with ML Predictions
 """
 import boto3
+from typing import List, Dict, Tuple
 from datetime import datetime
 import time
 import sys
@@ -189,25 +190,32 @@ class ZombieService:
             duration = time.time() - start_time
             
             # Save to database
-            scan_id = self._save_to_database(scan_regions, all_zombies, duration, user_id)
+            # Apply resource protection
+            actual_zombies, protected_resources = self._apply_resource_protection(all_zombies, user_id)
+            
+            if protected_resources:
+                print(f"   🛡️ Protected {len(protected_resources)} resources from being flagged as zombies")
+            
+            scan_id = self._save_to_database(scan_regions, actual_zombies, duration, user_id)
             
             # Calculate totals
-            total_cost = sum(z.get('monthly_cost', 0) for z in all_zombies)
+            total_cost = sum(z.get('monthly_cost', 0) for z in actual_zombies)
             
             # Format response
             return {
                 "status": "success",
                 "scan_id": scan_id,
                 "regions_scanned": scan_regions,
-                "total_zombies": len(all_zombies),
+                "total_zombies": len(actual_zombies),
                 "total_monthly_cost": total_cost,
                 "zombies_found": {
                     "ec2": {
-                        "count": len([z for z in all_zombies if z['type'] == 'EC2']),
-                        "zombies": [z for z in all_zombies if z['type'] == 'EC2']
+                        "count": len([z for z in actual_zombies if z['type'] == 'EC2']),
+                        "zombies": [z for z in actual_zombies if z['type'] == 'EC2']
                     }
                 },
-                "zombies": all_zombies,
+                "zombies": actual_zombies,
+                "protected_resources": protected_resources,
                 "at_risk_resources": at_risk_resources,
                 "at_risk_count": len(at_risk_resources),
                 "scan_timestamp": datetime.utcnow().isoformat() + "Z",
@@ -222,3 +230,42 @@ class ZombieService:
                 "status": "error",
                 "error": str(e)
             }
+
+    def _apply_resource_protection(self, zombies: List[Dict], user_id: int) -> Tuple[List[Dict], List[Dict]]:
+        """
+        Filter out protected resources from zombie list
+        
+        Args:
+            zombies: List of detected zombies
+            user_id: User ID for user-specific exclusions
+            
+        Returns:
+            (actual_zombies, protected_resources)
+        """
+        from services.resource_protection_service import get_protection_service
+        
+        protection = get_protection_service()
+        
+        actual_zombies = []
+        protected_resources = []
+        
+        for zombie in zombies:
+            resource_id = zombie.get('resource_id')
+            resource_name = zombie.get('resource_name')
+            tags = zombie.get('tags', [])
+            
+            is_protected, reason = protection.is_protected(
+                resource_id=resource_id,
+                resource_name=resource_name,
+                tags=tags,
+                user_id=user_id
+            )
+            
+            if is_protected:
+                zombie['protection_reason'] = reason
+                protected_resources.append(zombie)
+                print(f"   🛡️ Protected: {resource_name or resource_id} - {reason}")
+            else:
+                actual_zombies.append(zombie)
+        
+        return actual_zombies, protected_resources
