@@ -13,6 +13,10 @@ load_dotenv()
 # Get database URL from environment
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./cloudsense.db')
 
+# Fix for psycopg3: Railway uses postgresql://, but we need postgresql+psycopg://
+if DATABASE_URL.startswith('postgresql://'):
+    DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://')
+
 # Create engine with appropriate settings
 if DATABASE_URL.startswith('postgresql'):
     # PostgreSQL configuration
@@ -24,28 +28,23 @@ if DATABASE_URL.startswith('postgresql'):
         echo=False  # Set to True for SQL query logging
     )
 else:
-    # SQLite configuration (fallback)
+    # SQLite configuration (for local dev)
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
         echo=False
     )
 
+# Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create base class for models
 Base = declarative_base()
 
-
+# Dependency for FastAPI
 def get_db():
-    """Dependency for FastAPI endpoints"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-
-def init_db():
-    """Initialize database tables"""
-    import models
-    Base.metadata.create_all(bind=engine)
-    print(f"✅ Database initialized: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else DATABASE_URL}")
