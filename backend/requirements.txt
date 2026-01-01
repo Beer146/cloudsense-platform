@@ -11,3 +11,9 @@ pandas==2.2.3
 psycopg[binary]==3.2.3
 alembic==1.13.1
 requests==2.32.3
+anthropic==0.75.0
+python-jose==3.5.0
+scikit-learn==1.8.0
+tensorflow==2.20.0
+keras==3.13.0
+numpy==2.3.5
